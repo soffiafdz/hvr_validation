@@ -1,0 +1,352 @@
+#!/usr/bin/env perl
+
+
+# post_process_hc2 will apply a number of post-processing steps to a
+# ANIMAL-based hippocampal label in order to
+#	- remove CSF voxels (all around)
+#	- remove WM voxels (from regions that dont inlcude fimbria)
+#	- add missing GM voxels (to all regions).
+#
+# this script is loosely based on the work of 
+#	Barnes, NBA 2007 and Barnes, NI 2008
+#
+# this script is called by 5 linked files, each script name controls processing
+# to give only animal, thresholded or morph results.
+
+
+# Input:
+#      o label file
+#      o MRI file
+# I don't assume that the MRI and labels are the same size, but the
+# voxel centers must coincide.
+
+# Output
+#      o adjusted label file
+
+use strict;
+use Getopt::Long;
+use File::Basename;
+use File::Temp qw/ tempfile tempdir /;
+
+my $tmpdir;
+
+
+sub do_cmd {
+#   print STDERR "@_\n";
+   system(@_) == 0 or die;
+   }
+
+
+sub robust_mean_std {
+  
+  my ($mri, $label, $use_bimodal ) = @_;
+
+  my $tmphisto="$tmpdir/histo.txt" ;
+  my $dummy;
+  my $mean;
+  my $std;
+
+  my $bimodalT;
+
+  if ($use_bimodal) {
+
+    # get median from labelled region; 1 & 4 are hard coded labels for HC 
+    my @results = split(/\n/,`mincstats $mri -mask $label -mask_range 1,4 -median`);
+    ($dummy, $mean) = split(/\s{1,}/, $results[0]);
+    
+    # get bimodalT
+    my @results = split(/\n/,`mincstats $mri -mask $label -mask_range 1,4 -biModalT`);
+    ($dummy, $bimodalT) = split(/\s{1,}/, $results[0]);
+    
+    # sanity check, just in case.
+    if ($bimodalT > $mean * 0.7 ) { 
+      print "resetting bimodal theshold: $bimodalT $mean\n";
+      $bimodalT = $mean * 0.6;
+    }
+  }
+  else {
+    $bimodalT = 0.0;
+  }
+
+  # get median and standard dev  value from labelled region 
+  my @results = split(/\n/,`mincstats $mri -mask $label -mask_range 1,4 -stddev -floor $bimodalT`);
+  ($dummy, $std) = split(/\s{1,}/, $results[0]);
+
+  my @results = split(/\n/,`mincstats $mri -mask $label -mask_range 1,4 -median -floor $bimodalT`);
+  ($dummy, $mean) = split(/\s{1,}/, $results[0]);
+
+  &do_cmd("mincstats -clob $mri -mask $label -mask_range 1,4 -histogram $tmphisto -bins 100 -median");
+
+
+print "initial m/s: $mean $std\n";
+
+  my %vals;
+  my $key;
+  my $count;
+  my $v;
+  my $line;
+
+  open (F, "<$tmphisto") || die "Can't open $tmphisto";
+  
+  while ($line = <F>) {
+    
+     if ( !($line =~ /^#/ ) ) {
+	chomp $line;
+	($dummy, $key, $count) = split (/ +/,$line);
+        if ($count > 0 && ($key > ($bimodalT * 0.80))) {
+	  $vals{$key} = $count;
+	}
+     }
+  }
+  close F;
+  
+
+     # try a little EM estimation of mean/standard deviation.
+  my $prev_mean = 0;
+  while (abs($prev_mean - $mean) > 0.5 ) {
+print "loop m/s: $mean $std\n";
+
+    $prev_mean = $mean;
+
+    my $upper = $mean + 2.5 * $std;
+    my $lower = $mean - 2.5 * $std;
+
+    my $sum = 0;
+    my $sum2 = 0;
+    my $cnt = 0;
+    my $i;
+
+    foreach $v ( keys %vals) {
+      for ($i=0, $i < $vals{$v}, ++$i) {
+
+	if ($lower < $v && $v < $upper) {
+	  $sum += $v;
+	  $sum2 += $v * $v;
+	  $cnt++;
+	}
+      }
+    }
+
+
+    if ($cnt > 1) {
+      my $var = (($cnt * $sum2) - ($sum * $sum)) / ($cnt *($cnt - 1.0) );
+      $mean = $sum / $cnt;
+      $std  = sqrt($var);
+    }
+    else {
+      $mean = 0.0;
+      $std = 0.0;
+    }
+
+
+  }
+
+  
+
+  return ($mean,$std)
+}
+
+####################################################################
+my $verbose  = 1;
+my $clobber  = 0;
+my $me       = basename($0);
+
+GetOptions(
+	   'verbose' => \$verbose,
+	   'clobber' => \$clobber,
+	   );
+
+if($#ARGV < 2){ die "Usage: $me <input labels.mnc> <input (aligned) mri.mnc> <output labels.mnc>\n"; }
+
+# Get the arguments.
+my $infile_labels     = $ARGV[0];
+my $infile_mri        = $ARGV[1];
+my $outfile_labels    = $ARGV[2];
+
+# check for files
+if(-e $outfile_labels && !$clobber)
+{
+    print("$outfile_labels exists. Use clobber to overwrite.\n");
+    exit 0;
+}
+if (! -e $infile_labels ) { die "$infile_labels does not exist\n"; }
+if (! -e $infile_mri )    { die "$infile_mri does not exist\n"; }
+
+# define global vars.
+
+my $lower_thresh;		# thresholds to elim CSF and WM
+my $upper_thresh;
+my $dummy1;
+my $dummy2;
+my $value;
+my $stddev;
+
+# this label map defines the structs in the model HC label set.
+my %label_map = (5  => 'HCl',
+		 4  => 'FIMl',
+		 3  => 'HCr',
+		 2  => 'FIMr',
+		10  => 'AMYl',
+		17  => 'AMYr');
+
+$tmpdir = &tempdir( "$me-XXXXXXXX", TMPDIR => 1, CLEANUP => 1 );
+my $mri = "$tmpdir/mri.mnc";
+
+if ($me eq "pp_hc_animal_only")  {  
+
+  # simply remap the HC and FIM labels to the standard HC value.
+  # note that the FIM labels are used to protect possible WM voxels in the region of the fimbria
+ 
+  print "Remap the animal labels; no extra post-processing\n" if ($verbose); 
+  &do_cmd ("minclookup -clobber -discrete -lut '0,0; 2,2; 3,2; 4,4; 5,4;' $infile_labels $outfile_labels");
+
+}
+elsif ($me eq "pp_hc_xcorr_only")  {  
+
+  # here, a series of template labels (HCr, HCl) are used to achieve segmentation.  I need to
+  # 1- remove CSF voxels
+  # 2- add some GM?
+ 
+    # resample MRI like labels to ensure voxel-to-voxel overlap/alignment
+    ### BUG: no transformation in the resample; I assume (incorrectly) that the mri coming in is in the same space as the stereotaxic template .  This is not true if the input data is in native space! 
+  &do_cmd("mincresample -clobber -like $infile_labels $infile_mri $mri");
+
+  my $csf_value;
+  my $grey_value;
+  my $csf_threshold;
+  my $dummy;
+  my @results;
+
+
+  # the goal is to estimate the median value of CSF voxels in the subject's MRI
+  # howeveer, here the standard template's CSF label map is transformed onto the subject
+  # so the standard label, unless transformed with a non-lin xfm, will not do a good job id'ing CSF volxels...
+  # but note that below, the $csf_value is not even used...
+  
+  @results = split(/\n/,`mincstats -median -mask /data/ipl/proj03/ICBM_HC_models/models/HC_icbm_avg_152_t1_tal_nlin_symmetric_VI_csfmask.mnc -mask_binvalue 1 $mri`);
+  ($dummy, $csf_value) = split(/\s{1,}/, $results[0]);
+
+  # the goal is to estimate the range of HC GM voxel intensities for this subject's MRI
+  # here, voxels for AMG and HC for left and right sides are used.
+  @results = split(/\n/,`mincstats -median -mask $infile_labels -mask_range 1,4 -median $mri`);
+  ($dummy, $grey_value) = split(/\s{1,}/, $results[0]);
+
+  $csf_threshold = ($csf_value + $grey_value) / 2.0; # here $csf_value is used, but overwritten in the next line.
+  $csf_threshold = 0.4 *  $grey_value ; # what was I thinking?
+
+  # I assume $mri is T1w, with dark CSF... 
+  &do_cmd("minccalc -clob -byte -unsigned -expression '(A[1] < $csf_threshold) ? 0 : A[0]' $infile_labels $mri  $outfile_labels");
+
+
+}
+else {
+
+  # if not ANIMAL only, then all other techs requires MRI data to
+  # estimate the mean (and possibly stddev) in the region of the
+  # HC.  These values are then used to thres the WM and CSF voxels.
+
+
+  # resample MRI like labels to ensure voxel-to-voxel overlap/alignment
+  &do_cmd("mincresample -clobber -like $infile_labels $infile_mri $mri");
+
+
+
+
+  # get median value from labelled region 
+  #my @results = split(/\n/,`mincstats $mri -mask $infile_labels -mask_range 1,4 -median`);
+  #($dummy1, $value) = split(/\s{1,}/, $results[0]);
+
+  # get standard dev  value from labelled region 
+  #my @results = split(/\n/,`mincstats $mri -mask $infile_labels -mask_range 1,4 -stddev`);
+  #($dummy2, $stddev) = split(/\s{1,}/, $results[0]);
+
+
+  # set thresholds for CSF and WM elimination, using either Barnes'
+  # technique or a multiple of standard deviations (with a hard limit...)
+
+  ($value, $stddev) = &robust_mean_std($mri, $infile_labels, 1);
+
+  if ($me eq "pp_hc_fixed_thres" || $me eq "pp_hc_morpho_thres"  ) {  
+
+      # these hard-coded thresholds will be very dependent on the type of T1 scan parameters
+    print "use Barnes-like fixed thresh\n" if ($verbose); 
+
+    $lower_thresh = $value * 0.70;
+    $upper_thresh = $value * 1.20;
+
+  }
+  else {        #######   this is the default  #####   ($me eq "pp_hc_stddev_thres" || $me eq "pp_hc_morpho") {
+
+    print "Use local standard deviation to establish thresh\n" if ($verbose); 
+
+    # more wacked thresholds, without much justification 12 years later... ;^(
+    $lower_thresh = $value - 30 * (6.0  / $stddev);
+    $upper_thresh = $value + 20 * (6.0  / $stddev);
+
+  }
+
+  print "initial cleaning - low median high: $lower_thresh $value $upper_thresh\n" if ($verbose);
+
+  # **********  eliminate mis-classified voxels from initial HC label.
+
+  #   first eliminate CSF voxels from all regions.
+
+  my $tlabels0 = "$tmpdir/labels0.mnc";
+  &do_cmd("minccalc -clob -byte -unsigned -expression '(A[1] < $lower_thresh) ? 0 : A[0]' $infile_labels $mri  $tlabels0");
+
+  # now eliminate WM labels from the non-fimbria region
+
+  my $tlabels1 = "$tmpdir/labels1.mnc";
+  &do_cmd("minccalc -clob -byte -unsigned -expression '((A[0]>4.99 && A[0]<5.01) || (A[0]>2.99 && A[0]<3.01)) && (A[1] > $upper_thresh) ? 0 : A[0]' $tlabels0 $mri  $tlabels1");
+
+
+  # ********** if morpho not required, then output labels.
+
+  if ( $me eq "pp_hc_stddev_thres" || $me eq "pp_hc_fixed_thres") {
+
+    &do_cmd ("minclookup -clobber -discrete -lut '0,0; 2,2; 3,2; 4,4; 5,4;' $tlabels1 $outfile_labels");
+
+  }
+  else {   ###   ($me eq "pp_hc_morpho" || $me eq "pp_hc_morpho_thres")       { 
+
+
+    # dilate label by 1 voxel, and keep just the rim of new voxels.
+    my $tlabels2 = "$tmpdir/labels2.mnc";
+    my $tlabels3 = "$tmpdir/labels3.mnc";
+    my $tlabels4 = "$tmpdir/labels4.mnc";
+    &do_cmd("mincmorph -clob -byte -unsigned -3D06 -median_dilation $tlabels1 $tlabels2");
+    &do_cmd("minccalc -clob -byte -unsigned -expression 'A[0]-A[1]' $tlabels2 $tlabels1 $tlabels3");
+
+    # set thresholds for GM additions within the rim just defined.
+    if ($me eq "pp_hc_morpho") {
+
+#      ($value, $stddev) = &robust_mean_std($mri, $tlabels1, 0);
+
+#      $lower_thresh = $value - 1.5 * $stddev;
+#      $upper_thresh = $value + 1.0 * $stddev;
+
+    $lower_thresh = $value - 1.5 * 14 * (6.0  / $stddev);
+    $upper_thresh = $value + 1.5 * 10 * (6.0  / $stddev);
+
+
+    }
+    else{
+      $lower_thresh = 0.80 * $value;
+      $upper_thresh = 1.10 * $value;
+    }
+
+    print "morpho: low median high: $lower_thresh $value $upper_thresh\n" if ($verbose);
+
+
+    # add in only the GM voxels (based on MRI intensity) from the rim
+    &do_cmd("minccalc -clob -byte -unsigned -expression '(A[0]>0.5 && (A[2] > $upper_thresh || A[2] < $lower_thresh)) 
+      ? 0 : A[1]' $tlabels3 $tlabels2 $mri $tlabels4");
+
+    &do_cmd ("minclookup -clobber -discrete -lut '0,0; 2,2; 3,2; 4,4; 5,4;' $tlabels4 $outfile_labels");
+
+
+  }
+}
+
+&do_cmd("rm -rf $tmpdir");
+
