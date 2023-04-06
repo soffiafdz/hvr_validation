@@ -30,13 +30,20 @@ setnames(volumes,
          c("CNN", "MALF", "NLPB"))
 
 # By Sex
+# Palette
+cbPalette     <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
 png(here("plots/adni-bl_similarity_sex.png"),
     width = 20, height = 10, units = "in", res = 300)
+
 g <- ggpairs(volumes[DX != ""],
              columns = 4:8,
              ggplot2::aes(colour = PTGENDER, alpha = 0.7)) +
   theme_linedraw(base_size = 24) +
   theme(text = element_text(size = 24)) +
+  scale_fill_manual(values = cbPalette[-1]) +
+  scale_colour_manual(values = cbPalette[-1]) +
   labs(title = "Similarity between segmentations — Sex")
 print(g)
 dev.off()
@@ -50,6 +57,8 @@ g <- ggpairs(volumes[DX != ""],
              ggplot2::aes(colour = DX, alpha = 0.7)) +
   theme_linedraw(base_size = 24) +
   theme(text = element_text(size = 24)) +
+  scale_fill_manual(values = cbPalette) +
+  scale_colour_manual(values = cbPalette) +
   labs(title = "Similarity between segmentations — Diagnosis")
 print(g)
 dev.off()
