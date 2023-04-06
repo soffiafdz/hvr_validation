@@ -49,8 +49,8 @@ simon_dt      <- covars[volumes, on = "SESS",
                           SCANNER_model = factor(man_model_name),
                           TIME_shift_bl = as.numeric((date - min(date))/365.25),
                           HC            = HC_z,
-                          HC_stx        = HC_stx_z,
                           HC_norm       = HC_norm_z,
+                          HC_stx        = HC_stx_z,
                           HVR           = HVR_z)]
 #rm(volumes, covars)
 
@@ -78,8 +78,8 @@ mod_hvr2      <- lmer(TIME_shift_bl ~ HVR + (1 | SCANNER_man),
 ## Residuals comparisons
 resids_dt     <- data.table(ID      = 1:93,
                             HC      = residuals(mod_hc),
-                            HC_stx  = residuals(mod_hc_stx),
                             HC_norm = residuals(mod_hc_norm),
+                            HC_stx  = residuals(mod_hc_stx),
                             HVR     = residuals(mod_hvr))
 
 resids_dt     <- melt(resids_dt, id.vars = "ID",
@@ -99,6 +99,9 @@ fwrite(aic_bic_dt[, .(MEASURE = V1, df, AIC, BIC)],
        here("data/derivatives/simon_models_aic_bic.csv"))
 
 ## Plots
+# Palette
+cbPalette     <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 # Residuals plots
 # HC
 png(here("plots/simon_residuals_hc.png"),
@@ -136,10 +139,10 @@ ggplot(resids_dt, aes(x = HC_measure, y = RESIDUAL)) +
   geom_violin(trim = FALSE, alpha = .1) +
   stat_summary(fun.data = "median_hilow", geom = "pointrange",
                alpha = .7, colour = "red") +
-  geom_label_repel(data = resids_dt[, .SD[.N/2], HC_measure],
-                   aes(y = MEDIAN,
-                       label = glue("{signif(MEAN, 4)} ({round(SD, 3)})")),
-                   alpha = .8, size = 5, nudge_x = 0.21) +
+  geom_richtext(data = resids_dt[, .SD[.N/2], HC_measure],
+                aes(y = MEDIAN,
+                    label = glue("{signif(MEAN, 4)}<br>({round(SD, 3)})")),
+                alpha = .8, size = 5, nudge_x = 0.25) +
   ylab("Model residuals") +
   xlab("Hippocampal measures") +
   ggtitle("Residuals: <HC> ~ TIME_shift + (1 | SCANNER_manuf)")
@@ -148,7 +151,8 @@ ggsave(here("plots/simon_residuals_comparison.png"),
        width = 15, height = 10, units = "in", dpi = "retina")
 
 # Point plot
-ggplot(melt(simon_dt, measure.vars = patterns("^H")),
+simon_wide <- melt(simon_dt, measure.vars = patterns("^H"))
+ggplot(simon_wide,
        aes(x = TIME_shift_bl, y = value, colour = SCANNER_man)) +
   theme_linedraw(base_size = 24) +
   theme(text = element_text(size = 24),
@@ -157,6 +161,7 @@ ggplot(melt(simon_dt, measure.vars = patterns("^H")),
   geom_smooth(method = "lm", se = FALSE) +
   #stat_cor(size = 5) +
   facet_grid(cols = vars(variable)) +
+  scale_colour_manual(values = cbPalette) +
   labs(title = "SIMON dataset. HC measures through time.",
        x = "Time (years)",
        y = "HC measure (Z-scored)",
