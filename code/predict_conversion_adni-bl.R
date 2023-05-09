@@ -20,11 +20,15 @@ DT        <- volumes[METHOD == "cnn"
                      .(PTID, DX, AGE, PTGENDER, PTEDUCAT, CONV_3Y,
                        ABETA, PIB, AV45, APOE4, ADAS13, MMSE, CDRSB,
                        RAVLT_immediate, RAVLT_learning, RAVLT_forgetting,
-                       HC      = HC_mean,
-                       HC_stx  = HC_stx_mean,
-                       HC_norm = HC_norm_mean,
-                       HVR     = HVR_mean)
-                   ][!is.na(HC)]
+                       Left_HC        = HC_l,
+                       Left_HC_stx    = HC_stx_l,
+                       Left_HC_norm   = HC_norm_l,
+                       Left_HVR       = HVR_l,
+                       Right_HC       = HC_r,
+                       Right_HC_stx   = HC_stx_r,
+                       Right_HC_norm  = HC_norm_r,
+                       Right_HVR      = HVR_r)
+                   ][!is.na(Left_HC)]
 
 ## ApoE4: binarized
 DT[APOE4 == 0, APOE4_bin := 0]
@@ -81,8 +85,8 @@ res_tst   <- vector("list", length = 5)
 
 # Base
 f_aboost_base   <- here("data/rds/adni-bl_model-conv3_adaboost_base.rds")
-if (file.exists(f_aboost_base)) {
-#if (FALSE) {
+#if (file.exists(f_aboost_base)) {
+if (FALSE) {
   aboost_base   <- read_rds(f_aboost_base)
 } else {
   cols          <- c("CONV_3Y", covars)
@@ -105,11 +109,11 @@ preds_base      <- fifelse(preds_base_dt$Progressor > .5, 1, 0)
 
 # HC
 f_aboost_hc     <- here("data/rds/adni-bl_model-conv3_adaboost_hc.rds")
-if (file.exists(f_aboost_hc)) {
-#if (FALSE) {
+#if (file.exists(f_aboost_hc)) {
+if (FALSE) {
   aboost_hc     <- read_rds(f_aboost_hc)
 } else {
-  cols          <- c("CONV_3Y", "HC", covars)
+  cols          <- c("CONV_3Y", "Left_HC", "Right_HC", covars)
   aboost_hc     <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "AdaBag",
@@ -128,11 +132,11 @@ preds_hc        <- fifelse(preds_hc_dt$Progressor > .5, 1, 0)
 
 # HC_stx
 f_aboost_hcstx  <- here("data/rds/adni-bl_model-conv3_adaboost_hc_stx.rds")
-if (file.exists(f_aboost_hcstx)) {
-#if (FALSE) {
+#if (file.exists(f_aboost_hcstx)) {
+if (FALSE) {
   aboost_hcstx  <- read_rds(f_aboost_hcstx)
 } else {
-  cols          <- c("CONV_3Y", "HC_stx", covars)
+  cols          <- c("CONV_3Y", "Left_HC_stx", "Right_HC_stx", covars)
   aboost_hcstx  <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "AdaBag",
@@ -152,11 +156,11 @@ preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
 # HC_norm
 f_aboost_hcnorm <- here("data/rds/adni-bl_model-conv3_adaboost_hc_norm.rds")
-if (file.exists(f_aboost_hcnorm)) {
-#if (FALSE) {
+#if (file.exists(f_aboost_hcnorm)) {
+if (FALSE) {
   aboost_hcnorm <- read_rds(f_aboost_hcnorm)
 } else {
-  cols          <- c("CONV_3Y", "HC_norm", covars)
+  cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
   aboost_hcnorm <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "AdaBag",
@@ -176,11 +180,11 @@ preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_aboost_hvr    <- here("data/rds/adni-bl_model-conv3_adaboost_hvr.rds")
-if (file.exists(f_aboost_hvr)) {
-#if(FALSE) {
+#if (file.exists(f_aboost_hvr)) {
+if(FALSE) {
   aboost_hvr    <- read_rds(f_aboost_hvr)
 } else {
-  cols          <- c("CONV_3Y", "HVR", covars)
+  cols          <- c("CONV_3Y", "Left_HVR", "Right_HVR", covars)
   aboost_hvr    <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "AdaBag",
@@ -234,7 +238,7 @@ g <- ggroc(aboost_roc, aes = "group", legacy.axes = TRUE) +
   facet_grid(~name) +
   geom_label(data = auc_aboost, hjust = "inward", vjust = "inward", size = 6,
              aes(x = x, y = y, label = paste("AUC:", round(auc, 3)))) +
-  ggtitle("Adaboost | ROC:\nConv-3Y ~ <HC> + Age + Sex + Education + Cog.PC1 + Mem.PC1 + APOE4")
+  ggtitle("Adaboost | ROC:\nConv-3Y ~ <HC_left> + <HC_right> + Age + Sex + Education + Cog.PC1 + Mem.PC1 + APOE4")
 print(g)
 dev.off()
 
@@ -246,8 +250,8 @@ res_tst         <- vector("list", length = 5)
 
 # Base
 f_svm_base      <- here("data/rds/adni-bl_model-conv3_svm_base.rds")
-if (file.exists(f_svm_base)) {
-#if (FALSE) {
+#if (file.exists(f_svm_base)) {
+if (FALSE) {
   svm_base      <- read_rds(f_svm_base)
 } else {
   cols          <- c("CONV_3Y", covars)
@@ -270,11 +274,11 @@ preds_base      <- fifelse(preds_base_dt$Progressor > .5, 1, 0)
 
 # HC
 f_svm_hc        <- here("data/rds/adni-bl_model-conv3_svm_hc.rds")
-if (file.exists(f_svm_hc)) {
-#if (FALSE) {
+#if (file.exists(f_svm_hc)) {
+if (FALSE) {
   svm_hc        <- read_rds(f_svm_hc)
 } else {
-  cols          <- c("CONV_3Y", "HC", covars)
+  cols          <- c("CONV_3Y", "Left_HC", "Right_HC", covars)
   svm_hc        <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "svmLinearWeights",
@@ -293,11 +297,11 @@ preds_hc        <- fifelse(preds_hc_dt$Progressor > .5, 1, 0)
 
 # HC_stx
 f_svm_hcstx     <- here("data/rds/adni-bl_model-conv3_svm_hc_stx.rds")
-if (file.exists(f_svm_hcstx)) {
-#if (FALSE) {
+#if (file.exists(f_svm_hcstx)) {
+if (FALSE) {
   svm_hcstx     <- read_rds(f_svm_hcstx)
 } else {
-  cols          <- c("CONV_3Y", "HC_stx", covars)
+  cols          <- c("CONV_3Y", "Left_HC_stx", "Right_HC_stx", covars)
   svm_hcstx     <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "svmLinearWeights",
@@ -317,11 +321,11 @@ preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
 # HC_norm
 f_svm_hcnorm <- here("data/rds/adni-bl_model-conv3_svm_hc_norm.rds")
-if (file.exists(f_svm_hcnorm)) {
-#if (FALSE) {
+#if (file.exists(f_svm_hcnorm)) {
+if (FALSE) {
   svm_hcnorm <- read_rds(f_svm_hcnorm)
 } else {
-  cols          <- c("CONV_3Y", "HC_norm", covars)
+  cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
   svm_hcnorm <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "svmLinearWeights",
@@ -341,11 +345,11 @@ preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_svm_hvr    <- here("data/rds/adni-bl_model-conv3_svm_hvr.rds")
-if (file.exists(f_svm_hvr)) {
-#if(FALSE) {
+#if (file.exists(f_svm_hvr)) {
+if(FALSE) {
   svm_hvr    <- read_rds(f_svm_hvr)
 } else {
-  cols          <- c("CONV_3Y", "HVR", covars)
+  cols          <- c("CONV_3Y", "Left_HVR", "Right_HVR", covars)
   svm_hvr    <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "svmLinearWeights",
@@ -399,7 +403,7 @@ g <- ggroc(svm_roc, aes = "group", legacy.axes = TRUE) +
   facet_grid(~name) +
   geom_label(data = auc_svm, hjust = "inward", vjust = "inward", size = 6,
              aes(x = x, y = y, label = paste("AUC:", round(auc, 3)))) +
-  ggtitle("SVM | ROC:\nConv-3Y ~ <HC> + Age + Sex + Education + Cog.PC1 + Mem.PC1 + APOE4")
+  ggtitle("SVM | ROC:\nConv-3Y ~ <HC_left> + <HC_right> + Age + Sex + Education + Cog.PC1 + Mem.PC1 + APOE4")
 print(g)
 dev.off()
 
@@ -411,8 +415,8 @@ res_tst         <- vector("list", length = 5)
 
 # Base
 f_nbayes_base      <- here("data/rds/adni-bl_model-conv3_nbayes_base.rds")
-if (file.exists(f_nbayes_base)) {
-#if (FALSE) {
+#if (file.exists(f_nbayes_base)) {
+if (FALSE) {
   nbayes_base      <- read_rds(f_nbayes_base)
 } else {
   cols          <- c("CONV_3Y", covars)
@@ -435,11 +439,11 @@ preds_base      <- fifelse(preds_base_dt$Progressor > .5, 1, 0)
 
 # HC
 f_nbayes_hc        <- here("data/rds/adni-bl_model-conv3_nbayes_hc.rds")
-if (file.exists(f_nbayes_hc)) {
-#if (FALSE) {
+#if (file.exists(f_nbayes_hc)) {
+if (FALSE) {
   nbayes_hc        <- read_rds(f_nbayes_hc)
 } else {
-  cols          <- c("CONV_3Y", "HC", covars)
+  cols          <- c("CONV_3Y", "Left_HC", "Right_HC", covars)
   nbayes_hc        <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "naive_bayes",
@@ -458,11 +462,11 @@ preds_hc        <- fifelse(preds_hc_dt$Progressor > .5, 1, 0)
 
 # HC_stx
 f_nbayes_hcstx     <- here("data/rds/adni-bl_model-conv3_nbayes_hc_stx.rds")
-if (file.exists(f_nbayes_hcstx)) {
-#if (FALSE) {
+#if (file.exists(f_nbayes_hcstx)) {
+if (FALSE) {
   nbayes_hcstx     <- read_rds(f_nbayes_hcstx)
 } else {
-  cols          <- c("CONV_3Y", "HC_stx", covars)
+  cols          <- c("CONV_3Y", "Left_HC_stx", "Right_HC_stx", covars)
   nbayes_hcstx     <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "naive_bayes",
@@ -482,11 +486,11 @@ preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
 # HC_norm
 f_nbayes_hcnorm <- here("data/rds/adni-bl_model-conv3_nbayes_hc_norm.rds")
-if (file.exists(f_nbayes_hcnorm)) {
-#if (FALSE) {
+#if (file.exists(f_nbayes_hcnorm)) {
+if (FALSE) {
   nbayes_hcnorm <- read_rds(f_nbayes_hcnorm)
 } else {
-  cols          <- c("CONV_3Y", "HC_norm", covars)
+  cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
   nbayes_hcnorm <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "naive_bayes",
@@ -506,11 +510,11 @@ preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_nbayes_hvr    <- here("data/rds/adni-bl_model-conv3_nbayes_hvr.rds")
-if (file.exists(f_nbayes_hvr)) {
-#if(FALSE) {
+#if (file.exists(f_nbayes_hvr)) {
+if(FALSE) {
   nbayes_hvr    <- read_rds(f_nbayes_hvr)
 } else {
-  cols          <- c("CONV_3Y", "HVR", covars)
+  cols          <- c("CONV_3Y", "Left_HVR", "Right_HVR", covars)
   nbayes_hvr    <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "naive_bayes",
@@ -564,6 +568,6 @@ g <- ggroc(nbayes_roc, aes = "group", legacy.axes = TRUE) +
   facet_grid(~name) +
   geom_label(data = auc_nbayes, hjust = "inward", vjust = "inward", size = 6,
              aes(x = x, y = y, label = paste("AUC:", round(auc, 3)))) +
-  ggtitle("Naive Bayes | ROC:\nConv-3Y ~ <HC> + Age + Sex + Education + Cog.PC1 + Mem.PC1 + APOE4")
+  ggtitle("Naive Bayes | ROC:\nConv-3Y ~ <HC_left> + <HC_right> + Age + Sex + Education + Cog.PC1 + Mem.PC1 + APOE4")
 print(g)
 dev.off()

@@ -32,50 +32,66 @@ seg_volumes   <- segmentations[seg_volumes, on = .(PTID, SCANDATE)]
 
 hc_dt         <- adnimerge[seg_volumes, on = .(PTID, SCANDATE),
                            .(PTID, SESSION, DX, PTGENDER,
-                             HC       = (HC_l       + HC_r      ) / 2,
-                             HC_stx   = (HC_stx_l   + HC_stx_r  ) / 2,
-                             HC_norm  = (HC_norm_l  + HC_norm_r ) / 2,
-                             HVR      = (HVR_l      + HVR_r     ) / 2)]
+                             Left_HC        = HC_l,
+                             Left_HC_stx    = HC_stx_l,
+                             Left_HC_norm   = HC_norm_l,
+                             Left_HVR       = HVR_l,
+                             Right_HC       = HC_r,
+                             Right_HC_stx   = HC_stx_r,
+                             Right_HC_norm  = HC_norm_r,
+                             Right_HVR      = HVR_r)]
 rm(adnimerge, segmentations, seg1_volumes, seg2_volumes, seg_volumes)
 
 ## Wide -> Long
 hc_dt         <- melt(hc_dt,
-                      measure = patterns("^H"),
+                      measure = patterns("Left|Right"),
                       variable.name = "HC_measure",
                       value.name = "HC_value")
 
+hc_dt[, `:=`(SIDE       = str_extract(HC_measure, "Left|Right"),
+             HC_measure = str_extract(HC_measure, "(?<=_).*"))]
+
 hc_dt[, `:=`(SESSION    = factor(SESSION),
              DX         = factor(DX,
-                                 levels  = c("Dementia", "MCI", "CN"),
-                                 labels  = c("AD", "MCI", "CN")),
+                                 levels  = c("CN", "MCI", "Dementia"),
+                                 labels  = c("CN", "MCI", "AD")),
+             SIDE       = factor(SIDE),
              HC_measure = factor(HC_measure))]
 
 ## Effect sizes — DX
 f_effvals_s2  <- here("data/rds/adni-s2_effsizes.rds")
 if (file.exists(f_effvals_s2)) {
+#if (FALSE) {
   effvals_s2  <- read_rds(f_effvals_s2)
 } else {
+  sides       <- hc_dt[, levels(SIDE)]
   dxs         <- hc_dt[, levels(DX)]
   hc_measures <- hc_dt[, levels(HC_measure)]
   contrast    <- hc_dt[, levels(SESSION)]
   effects <- bounds_l <- bounds_h <- vector()
-  for (dx in dxs) {
-    for (hc_measure in hc_measures) {
-      sprintf("Dx: %s; HC: %s", dx, hc_measure)
-      effect   <- bootES(hc_dt[DX == dx & HC_measure  == hc_measure],
-                         R           = 5000,
-                         data.col    = "HC_value",
-                         group.col   = "SESSION",
-                         contrast    = contrast,
-                         effect.type = "cohens.d")
-      effect
-      effects  <- c(effects, mean(effect$t))
-      bounds_l <- c(bounds_l, effect$bounds[1])
-      bounds_h <- c(bounds_h, effect$bounds[2])
+  for (side in sides) {
+    for (dx in dxs) {
+      for (hc_measure in hc_measures) {
+        sprintf("Dx: %s; HC: %s", dx, hc_measure)
+        effect   <- bootES(hc_dt[DX == dx &
+                                 SIDE == side &
+                                 HC_measure  == hc_measure],
+                           R           = 5000,
+                           data.col    = "HC_value",
+                           group.col   = "SESSION",
+                           contrast    = contrast,
+                           effect.type = "cohens.d")
+        effect
+        effects  <- c(effects, mean(effect$t))
+        bounds_l <- c(bounds_l, effect$bounds[1])
+        bounds_h <- c(bounds_h, effect$bounds[2])
+      }
     }
   }
-  effvals_s2  <- data.table(HC_measure = rep(hc_measures, times = 3),
-                            DX         = rep(dxs, each = 4),
+  effvals_s2  <- data.table(
+                            SIDE       = rep(sides, each = 12),
+                            DX         = rep(dxs, each = 4, times = 2),
+                            HC_measure = rep(hc_measures, times = 6),
                             EFFECT     = round(effects, 3),
                             BOUNDS_l   = round(bounds_l, 3),
                             BOUNDS_h   = round(bounds_h, 3))
@@ -85,35 +101,33 @@ if (file.exists(f_effvals_s2)) {
 
 ## GGridges
 f_plot        <- here("plots/adni-s2_effsizes.png")
-#if (!file.exists(f_plot)) {
-if (TRUE) {
+if (!file.exists(f_plot)) {
+#if (TRUE) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
   # Labels
-  efflabs     <- effvals_s2[, .(HC_measure, DX,
-                                LABEL = paste0(EFFECT,
-                                               "<br>[", BOUNDS_l, ", ",
-                                               BOUNDS_h, "]"))]
-  #efflabs     <- efflabs[, .(LABEL = paste(LABEL[DX == "CN"],
-                                           #LABEL[DX == "MCI"],
-                                           #LABEL[DX == "AD"],
-                                           #sep = "<br>")),
-                         #HC_measure]
+  efflabs     <- effvals_s2[, .(HC_measure, SIDE, DX,
+                                LABEL = paste0(SIDE, ": ", EFFECT,
+                                               " [", BOUNDS_l,
+                                               ", ", BOUNDS_h, "]"))]
+  efflabs     <- efflabs[, .(LABEL = paste(LABEL[SIDE == "Left"],
+                                           LABEL[SIDE == "Right"],
+                                           sep = " | ")),
+                         .(HC_measure, DX)]
 
   # Plot
-  ggplot(hc_dt, aes(x = HC_value)) +
+  ggplot(hc_dt, aes(x = HC_value, y = SIDE)) +
   theme_linedraw(base_size = 24) +
-  theme(text = element_text(size = 24), legend.position = "bottom",
-        axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
-  geom_density(aes(fill = SESSION, colour = SESSION), alpha = .2) +
-  geom_vline(data = hc_dt[, mean(HC_value), .(DX, SESSION, HC_measure)],
-             aes(xintercept = V1, colour = SESSION), linetype = "dashed") +
-  #geom_density_ridges(aes(fill = SESSION), scale = 13,
-                      #rel_min_height = 0.01, alpha = .2) +
-  geom_richtext(data = efflabs, aes(label = LABEL), size = 5,
-                x = -Inf, y = Inf, hjust = -0.05, vjust = 1.1) +
+  theme(text = element_text(size = 24), legend.position = "bottom") +
+  #geom_density(aes(fill = SESSION, colour = SESSION), alpha = .2) +
+  geom_density_ridges(aes(fill = SESSION, colour = SESSION),
+                      rel_min_height = .01, alpha = .2) +
+  geom_vline(data = hc_dt[, mean(HC_value), .(DX, SIDE, SESSION, HC_measure)],
+             aes(xintercept = V1, colour = SESSION, linetype = SIDE)) +
+  geom_richtext(data = efflabs, aes(label = LABEL), size = 6,
+                x = -Inf, y = -Inf, hjust = -0.05, vjust = -0.1) +
   facet_wrap(factor(DX, levels = c("CN", "MCI", "AD")) ~ HC_measure,
              scales = "free") +
   scale_fill_manual(values = cbPalette[-1]) +
@@ -122,5 +136,5 @@ if (TRUE) {
        x = "Measure", y = NULL, fill = "Session")
 
   ggsave(f_plot, width = 30, height = 13, units = "in", dpi = "retina")
-  #rm(efflabs_sex, f_plot_sex)
+  rm(efflabs_sex, f_plot_sex)
 }

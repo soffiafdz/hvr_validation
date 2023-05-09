@@ -62,7 +62,7 @@ volumes         <- volumes[, .(SCAN, ICC, SCALEFACTOR,
                                HC_norm_l    = HC_l_norm,
                                HC_norm_mean,
                                HVR_l        = HVR_l,
-                               HVR_r        = HVR_l,
+                               HVR_r        = HVR_r,
                                HVR_mean
                                )]
 
