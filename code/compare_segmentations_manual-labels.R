@@ -142,16 +142,16 @@ setorder(scores, kappa)
 
 ### Boxplot Kappas HCVC
 f_plot1 <- here("plots/manual-labels_segm-dice_hcvc.png")
-if(!file.exists(f_plot1)) {
-#if(TRUE) {
+#if(!file.exists(f_plot1)) {
+if(TRUE) {
   ggplot(scores, aes(x = method, y = kappa)) +
-      theme_linedraw(base_size = 24) +
+      theme_linedraw(base_size = 12) +
       theme(
-         text = element_text(size = 24),
-         axis.text.y = element_text(size = 20),
-         axis.text.x = element_text(size = 20, angle = 90,
+         text = element_text(size = 12),
+         axis.text.y = element_text(size = 10),
+         axis.text.x = element_text(size = 10, angle = 90,
                                     hjust = 0.95, vjust = 0.2)) +
-      geom_jitter(height = 0, width = .05, shape = 21, size = .5) +
+      geom_jitter(height = 0, width = .05, shape = 21, size = .4) +
       geom_violin(trim = FALSE, alpha = .1) +
       stat_summary(fun.data = "median_hilow",
                    geom = "pointrange",
@@ -167,7 +167,7 @@ if(!file.exists(f_plot1)) {
       #ylim(0.4,1.0) +
       ggtitle("Automatic segmentation: HC and CSF")
 
-  ggsave(f_plot1, width = 10, height = 10, units = "in", dpi = "retina")
+  ggsave(f_plot1, width = 5, height = 5, units = "in", dpi = "retina")
 }
 
 ### Boxplot Kappas HCVC+AG:
@@ -215,19 +215,26 @@ vols    <- rbindlist(list(manual[, METHOD := "manual"],
 rm(manual, malf, nlpb, cnn)
 
 # Clean
-vols[, `:=`(ID = str_extract(ID, "\\d{3}"),
-            HC = (LHC + RHC) / 2, CSF = (LCSF + RCSF) / 2)]
+vols[, ID := str_extract(ID, "\\d{3}")]
+#vols[, `:=`(ID = str_extract(ID, "\\d{3}"),
+            #HC = (HC) / 2, CSF = (CSF) / 2)]
 
-vols    <- melt(vols[, .(ID, METHOD, HC, CSF)],
-                measure.vars = c("HC", "CSF"),
+vols    <- melt(vols[, .(ID, METHOD, LHC, LCSF, RHC, RCSF)],
+                measure.vars = patterns("(HC|CSF)$"),
                 value.name = "VOL",
                 variable.name = "ROI")
+
+vols[, SIDE := factor(str_extract(ROI, "L|R"),
+                      levels = c("L", "R"),
+                      labels = c("Left", "Right"))]
+vols[ROI %like% "HC", ROI := "HC"]
+vols[ROI %like% "CSF", ROI := "CSF"]
 
 manual  <- vols[METHOD == "manual"]
 segs    <- dcast(vols[METHOD != "manual"], ... ~ METHOD, value.var = "VOL")
 
-vols    <- manual[segs, on = .(ID, ROI),
-                  .(ID, ROI, MANUAL = VOL, malf, nlpb, cnn)]
+vols    <- manual[segs, on = .(ID, SIDE, ROI),
+                  .(ID, SIDE, ROI, MANUAL = VOL, malf, nlpb, cnn)]
 vols    <- melt(vols,
                 measure.vars = c("malf", "nlpb", "cnn"),
                 variable.name = "SEGMENTATION",
@@ -239,8 +246,8 @@ vols[, SEGMENTATION := factor(SEGMENTATION,
                               labels = c("CNN", "MALF", "NLPB"))]
 
 f_plot3 <- here("plots/manual-labels_segm-corr_hcvc.png")
-if(!file.exists(f_plot3)) {
-#if(TRUE) {
+#if(!file.exists(f_plot3)) {
+if(TRUE) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -248,14 +255,17 @@ if(!file.exists(f_plot3)) {
     theme_linedraw(base_size = 24) +
     theme(text = element_text(size = 24), legend.position = "bottom") +
     geom_point(size = 2, shape = 21) +
+    geom_abline(intercept = 0, slope = 1,
+                colour = cbPalette[1], linetype = "dashed") +
     geom_smooth(method = "lm", alpha = .2) +
-    stat_cor(size = 5) +
-    facet_wrap(vars(ROI), scales = "free") +
-    scale_colour_manual(values = cbPalette) +
-    labs(x = "Mean computed volume", y = "Mean manual volume",
+    stat_cor(size = 5, label.x.npc = "right", label.y.npc = "bottom", hjust = "inward") +
+    facet_grid(rows = vars(ROI), cols = vars(SIDE), scales = "free") +
+    scale_colour_manual(values = cbPalette[-1]) +
+    labs(title = "Scatter plots: manual vs computed volumes",
+         x = "Computed volume", y = "Manual volume",
          colour = "Segmentation method")
 
-    ggsave(f_plot3, width = 20, height = 10, units = "in", dpi = "retina")
+    ggsave(f_plot3, width = 18, height = 10, units = "in", dpi = "retina")
 }
 
 # Bland-Altman plot
@@ -269,8 +279,8 @@ vols[, `:=`(MEAN_DIFF = mean(DIFF),
 
 
 f_plot4 <- here("plots/manual-labels_segm-bland-altman_hcvc.png")
-if(!file.exists(f_plot4)) {
-#if(TRUE) {
+#if(!file.exists(f_plot4)) {
+if(TRUE) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")

@@ -518,6 +518,13 @@
       ],
       "Hash": "f20c47fd52fae58b4e377c37bb8c335b"
     },
+    "commonmark": {
+      "Package": "commonmark",
+      "Version": "1.9.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "d691c61bff84bd63c383874d2d0c3307"
+    },
     "corrplot": {
       "Package": "corrplot",
       "Version": "0.92",
@@ -560,6 +567,16 @@
         "utils"
       ],
       "Hash": "e8a1e41acf02548751f45c718d55aa6a"
+    },
+    "curl": {
+      "Package": "curl",
+      "Version": "5.0.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "e4f97056611e8e6b8b852d13b7400cf1"
     },
     "data.table": {
       "Package": "data.table",
@@ -899,6 +916,21 @@
       ],
       "Hash": "a57f0f5dbcfd0d77ad4ff33032f5dc79"
     },
+    "ggtext": {
+      "Package": "ggtext",
+      "Version": "0.1.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "ggplot2",
+        "grid",
+        "gridtext",
+        "rlang",
+        "scales"
+      ],
+      "Hash": "c5ba8f5056487403a299b91984be86ca"
+    },
     "globals": {
       "Package": "globals",
       "Version": "0.16.2",
@@ -941,6 +973,26 @@
         "utils"
       ],
       "Hash": "7d7f283939f563670a697165b2cf5560"
+    },
+    "gridtext": {
+      "Package": "gridtext",
+      "Version": "0.1.5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "curl",
+        "grDevices",
+        "grid",
+        "jpeg",
+        "markdown",
+        "png",
+        "rlang",
+        "stringr",
+        "xml2"
+      ],
+      "Hash": "05e4f5fffb1eecfeaac9ea0b7f255fef"
     },
     "gtable": {
       "Package": "gtable",
@@ -1089,6 +1141,16 @@
         "utils"
       ],
       "Hash": "8954069286b4b2b0d023d1b288dce978"
+    },
+    "jpeg": {
+      "Package": "jpeg",
+      "Version": "0.1-10",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "031a0b683d001a7519202f0628fc0358"
     },
     "jquerylib": {
       "Package": "jquerylib",
@@ -1243,6 +1305,19 @@
         "R"
       ],
       "Hash": "7ce2733a9826b3aeb1775d56fd305472"
+    },
+    "markdown": {
+      "Package": "markdown",
+      "Version": "1.5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "commonmark",
+        "utils",
+        "xfun"
+      ],
+      "Hash": "d209cfd1f4ff7260eae5a7f07da3aa4f"
     },
     "memoise": {
       "Package": "memoise",
@@ -1449,6 +1524,16 @@
         "Rcpp"
       ],
       "Hash": "d744387aef9047b0b48be2933d78e862"
+    },
+    "png": {
+      "Package": "png",
+      "Version": "0.1-8",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "bd54ba8a0a5faded999a7aab6e46b374"
     },
     "polynom": {
       "Package": "polynom",
@@ -2109,6 +2194,17 @@
         "tools"
       ],
       "Hash": "a6860e1400a8fd1ddb6d9b4230cc34ab"
+    },
+    "xml2": {
+      "Package": "xml2",
+      "Version": "1.3.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "methods"
+      ],
+      "Hash": "40682ed6a969ea5abfd351eb67833adc"
     },
     "yaml": {
       "Package": "yaml",

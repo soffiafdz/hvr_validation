@@ -3,10 +3,12 @@
 library(here)
 library(readr)
 library(data.table)
+library(stringr)
 library(lme4)
 library(glue)
 library(ggplot2)
 library(ggrepel)
+library(ggtext)
 library(ggpubr)
 library(Hmisc)
 library(gridExtra)
@@ -23,15 +25,23 @@ if (file.exists(f_volumes)) {
 }
 
 # Parse SESS, ACQ, RUN
-volumes[, `:=`(SESS      = stringr::str_extract(SCAN, "ses-\\d{3}"),
-               ACQ       = stringr::str_extract(SCAN, "(?<=_).*(?=_)"),
-               RUN       = stringr::str_extract(SCAN, "run-\\d+"))]
+volumes[, `:=`(SESS      = str_extract(SCAN, "ses-\\d{3}"),
+               ACQ       = str_extract(SCAN, "(?<=_).*(?=_)"),
+               RUN       = str_extract(SCAN, "run-\\d+"))]
+
+# Clean
+volumes       <- volumes |> melt(measure.vars = patterns("(_l|_r)$"))
+volumes[variable %like% "_l", SIDE := "Left"]
+volumes[variable %like% "_r", SIDE := "Right"]
+volumes       <- volumes[, variable := str_extract(variable, ".*(?=_l|_r)")]
+volumes       <- volumes[!is.na(SIDE)] |>
+                dcast(... ~ variable, value.var = "value")
 
 # Z-scoring
-volumes[, `:=`(HC_z      = (HC_mean - mean(HC_mean)) / sd(HC_mean),
-               HC_stx_z  = (HC_stx_mean - mean(HC_stx_mean)) / sd(HC_stx_mean),
-               HC_norm_z = (HC_norm_mean - mean(HC_norm_mean)) / sd(HC_norm_mean),
-               HVR_z     = (HVR_mean - mean(HVR_mean)) / sd(HVR_mean))]
+volumes[, `:=`(HC_z       = scale(HC),
+               HC_norm_z  = scale(HC_norm),
+               HC_stx_z   = scale(HC_stx),
+               HVR_z      = scale(HVR))]
 
 
 ## Merge Covariate data
@@ -45,34 +55,35 @@ covars[, `:=`(SESS       = sprintf("ses-%03d", Session),
 
 # Merge
 simon_dt      <- covars[volumes, on = "SESS",
-                        .(SCANNER_man   = factor(manufacturer),
+                        .(SESS          = factor(SESS),
+                          SCANNER_man   = factor(manufacturer),
                           SCANNER_model = factor(man_model_name),
                           TIME_shift_bl = as.numeric((date - min(date))/365.25),
-                          HC            = HC_z,
-                          HC_norm       = HC_norm_z,
-                          HC_stx        = HC_stx_z,
-                          HVR           = HVR_z)]
-#rm(volumes, covars)
+                          SIDE          = factor(SIDE),
+                          HC_z, HC_norm_z, HC_stx_z, HVR_z)]
+rm(volumes, covars)
 
-# Remove one outlier
+# Rename
+colnames     <- c("HC", "HC_stx", "HC_norm", "HVR")
+setnames(simon_dt, paste(colnames, "z", sep = "_"), colnames)
 
 ## Mixed Effects models
-mod_hc        <- lmer(HC ~ TIME_shift_bl + (1 | SCANNER_man),
+mod_hc        <- lmer(HC ~ SIDE + TIME_shift_bl + (1|SCANNER_man) + (1|SESS),
                       data = simon_dt)
-mod_hc_stx    <- lmer(HC_stx ~ TIME_shift_bl + (1 | SCANNER_man),
+mod_hc_stx    <- lmer(HC_stx ~ SIDE + TIME_shift_bl + (1|SCANNER_man) + (1|SESS),
                       data = simon_dt)
-mod_hc_norm   <- lmer(HC_norm ~ TIME_shift_bl + (1 | SCANNER_man),
+mod_hc_norm   <- lmer(HC_norm ~ SIDE + TIME_shift_bl + (1|SCANNER_man) + (1|SESS),
                       data = simon_dt)
-mod_hvr       <- lmer(HVR ~ TIME_shift_bl + (1 | SCANNER_man),
+mod_hvr       <- lmer(HVR ~ SIDE + TIME_shift_bl + (1|SCANNER_man) + (1|SESS),
                       data = simon_dt)
 
-mod_hc2       <- lmer(TIME_shift_bl ~ HC + (1 | SCANNER_man),
+mod_hc2       <- lmer(TIME_shift_bl ~ SIDE + HC + (1 | SCANNER_man),
                       data = simon_dt)
-mod_hc_stx2   <- lmer(TIME_shift_bl ~ HC_stx + (1 | SCANNER_man),
+mod_hc_stx2   <- lmer(TIME_shift_bl ~ SIDE + HC_stx + (1 | SCANNER_man),
                       data = simon_dt)
-mod_hc_norm2  <- lmer(TIME_shift_bl ~ HC_norm + (1 | SCANNER_man),
+mod_hc_norm2  <- lmer(TIME_shift_bl ~ SIDE + HC_norm + (1 | SCANNER_man),
                       data = simon_dt)
-mod_hvr2      <- lmer(TIME_shift_bl ~ HVR + (1 | SCANNER_man),
+mod_hvr2      <- lmer(TIME_shift_bl ~ SIDE + HVR + (1 | SCANNER_man),
                       data = simon_dt)
 
 ## Residuals comparisons
@@ -91,11 +102,11 @@ resids_dt[, `:=`(MEDIAN = median(RESIDUAL),
           HC_measure]
 
 ## AIC | BIC
-aic_bic_dt    <- data.table(c("HC", "HC_stx", "HC_norm", "HVR"),
+aic_bic_dt    <- data.table(HC_metric = colnames,
                             AIC(mod_hc2, mod_hc_stx2, mod_hc_norm2, mod_hvr2),
                             BIC(mod_hc2, mod_hc_stx2, mod_hc_norm2, mod_hvr2))
 
-fwrite(aic_bic_dt[, .(MEASURE = V1, df, AIC, BIC)],
+fwrite(aic_bic_dt[, .(MEASURE = HC_metric, df, AIC, BIC)],
        here("data/derivatives/simon_models_aic_bic.csv"))
 
 ## Plots
@@ -106,28 +117,40 @@ cbPalette     <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
 # HC
 png(here("plots/simon_residuals_hc.png"),
     width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hc, main = "Residual plot: Hippocampus (Z-scored)")
+p <- plot(mod_hc,
+          main = "Residual plot: Hippocampus (Z-scored)",
+          xlim = c(-6, 3),
+          ylim = c(-3, 3))
 print(p)
 dev.off()
 
 # HC-stx
 png(here("plots/simon_residuals_hc_stx.png"),
     width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hc_stx, main = "Residual plot: Hippocampus-stx (Z-scored)")
+p <- plot(mod_hc_stx,
+          main = "Residual plot: Hippocampus-stx (Z-scored)",
+          xlim = c(-6, 3),
+          ylim = c(-3, 3))
 print(p)
 dev.off()
 
 # HC-norm
 png(here("plots/simon_residuals_hc_norm.png"),
     width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hc_norm, main = "Residual plot: Hippocampus-norm (Z-scored)")
+p <- plot(mod_hc_norm,
+          main = "Residual plot: Hippocampus-norm (Z-scored)",
+          xlim = c(-6, 3),
+          ylim = c(-3, 3))
 print(p)
 dev.off()
 
 # HVR
 png(here("plots/simon_residuals_hvr.png"),
     width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hvr, main = "Residual plot: HVR (Z-scored)")
+p <- plot(mod_hvr,
+          main = "Residual plot: HVR (Z-scored)",
+          xlim = c(-6, 3),
+          ylim = c(-3, 3))
 print(p)
 dev.off()
 
@@ -145,22 +168,23 @@ ggplot(resids_dt, aes(x = HC_measure, y = RESIDUAL)) +
                 alpha = .8, size = 5, nudge_x = 0.25) +
   ylab("Model residuals") +
   xlab("Hippocampal measures") +
-  ggtitle("Residuals: <HC> ~ TIME_shift + (1 | SCANNER_manuf)")
+  ggtitle("Residuals:\n<HC> ~ Left|Right + TIME_shift + (1|SCANNER_manuf) + (1|Session)")
 
 ggsave(here("plots/simon_residuals_comparison.png"),
        width = 15, height = 10, units = "in", dpi = "retina")
 
 # Point plot
 simon_wide <- melt(simon_dt, measure.vars = patterns("^H"))
-ggplot(simon_wide,
+ggplot(simon_wide[, Side := SIDE],
        aes(x = TIME_shift_bl, y = value, colour = SCANNER_man)) +
   theme_linedraw(base_size = 24) +
   theme(text = element_text(size = 24),
         legend.position = "bottom") +
-  geom_point(size = 2, shape = 21) +
-  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(size = 2, aes(shape = Side), alpha = .3) +
+  geom_smooth(method = "lm", se = FALSE, aes(linetype = Side)) +
   #stat_cor(size = 5) +
   facet_grid(cols = vars(variable)) +
+  scale_shape_manual(values = c(21, 22)) +
   scale_colour_manual(values = cbPalette) +
   labs(title = "SIMON dataset. HC measures through time.",
        x = "Time (years)",
