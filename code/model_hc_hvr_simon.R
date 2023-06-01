@@ -96,9 +96,13 @@ resids_dt     <- data.table(ID      = 1:93,
 resids_dt     <- melt(resids_dt, id.vars = "ID",
                     variable.name = "HC_measure", value.name = "RESIDUAL")
 
-resids_dt[, `:=`(MEDIAN = median(RESIDUAL),
-                 MEAN   = mean(RESIDUAL),
-                 SD     = sd(RESIDUAL)),
+resids_dt[, `:=`(
+                 MEDIAN   = median(RESIDUAL),
+                 MEAN     = mean(RESIDUAL),
+                 SD       = sd(RESIDUAL),
+                 MED_abs  = median(abs(RESIDUAL)),
+                 MEAN_abs = mean(abs(RESIDUAL)),
+                 SD_abs   = sd(abs(RESIDUAL))),
           HC_measure]
 
 ## AIC | BIC
@@ -115,70 +119,65 @@ cbPalette     <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                    "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 # Residuals plots
 # HC
-png(here("plots/simon_residuals_hc.png"),
-    width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hc,
+p1 <- plot(mod_hc,
           main = "Residual plot: Hippocampus (Z-scored)",
           xlim = c(-6, 3),
           ylim = c(-3, 3))
-print(p)
-dev.off()
 
 # HC-stx
-png(here("plots/simon_residuals_hc_stx.png"),
-    width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hc_stx,
+p2 <- plot(mod_hc_stx,
           main = "Residual plot: Hippocampus-stx (Z-scored)",
           xlim = c(-6, 3),
           ylim = c(-3, 3))
-print(p)
-dev.off()
 
 # HC-norm
-png(here("plots/simon_residuals_hc_norm.png"),
-    width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hc_norm,
+p3 <- plot(mod_hc_norm,
           main = "Residual plot: Hippocampus-norm (Z-scored)",
           xlim = c(-6, 3),
           ylim = c(-3, 3))
-print(p)
-dev.off()
 
 # HVR
-png(here("plots/simon_residuals_hvr.png"),
-    width = 10, height = 5, units = "in", res = 300)
-p <- plot(mod_hvr,
+p4 <- plot(mod_hvr,
           main = "Residual plot: HVR (Z-scored)",
           xlim = c(-6, 3),
           ylim = c(-3, 3))
-print(p)
-dev.off()
+
+resids_plot <- arrangeGrob(p1, p2, p3, p4, nrow = 2)
+
+ggsave(here("plots/simon_residuals.png"), plot = resids_plot,
+       width = 10, height = 10, units = "in", dpi = 600)
+
+ggsave(here("plots/simon_residuals.tiff"), plot = resids_plot,
+       width = 10, height = 10, units = "in", device = "tiff", dpi = 600)
 
 # Measures comparison of residuals
 ggplot(resids_dt, aes(x = HC_measure, y = RESIDUAL)) +
-  theme_linedraw(base_size = 24) +
-  theme(text = element_text(size = 24)) +
+  theme_linedraw(base_size = 12) +
+  theme(text = element_text(size = 12)) +
   geom_jitter(height = 0, width = .05, shape = 21) +
   geom_violin(trim = FALSE, alpha = .1) +
   stat_summary(fun.data = "median_hilow", geom = "pointrange",
                alpha = .7, colour = "red") +
-  geom_richtext(data = resids_dt[, .SD[.N/2], HC_measure],
-                aes(y = MEDIAN,
-                    label = glue("{signif(MEAN, 4)}<br>({round(SD, 3)})")),
-                alpha = .8, size = 5, nudge_x = 0.25) +
+  geom_label_repel(data = resids_dt[order(RESIDUAL), .SD[.N/2], HC_measure],
+                   aes(y = MEDIAN,
+                       label = glue("{signif(MEAN_abs, 3)}\n({round(SD_abs, 3)})")),
+                alpha = .8, size = 3, nudge_x = 0.25) +
   ylab("Model residuals") +
   xlab("Hippocampal measures") +
   ggtitle("Residuals:\n<HC> ~ Left|Right + TIME_shift + (1|SCANNER_manuf) + (1|Session)")
 
 ggsave(here("plots/simon_residuals_comparison.png"),
-       width = 15, height = 10, units = "in", dpi = "retina")
+       width = 7, height = 5, units = "in", dpi = 600)
+
+ggsave(here("plots/simon_residuals_comparison.tiff"),
+       width = 7, height = 5, units = "in", device = "tiff", dpi = 600)
 
 # Point plot
 simon_wide <- melt(simon_dt, measure.vars = patterns("^H"))
 ggplot(simon_wide[, Side := SIDE],
        aes(x = TIME_shift_bl, y = value, colour = SCANNER_man)) +
-  theme_linedraw(base_size = 24) +
-  theme(text = element_text(size = 24),
+  theme_linedraw(base_size = 12) +
+  theme(text = element_text(size = 12),
         legend.position = "bottom") +
   geom_point(size = 2, aes(shape = Side), alpha = .3) +
   geom_smooth(method = "lm", se = FALSE, aes(linetype = Side)) +
@@ -186,10 +185,13 @@ ggplot(simon_wide[, Side := SIDE],
   facet_grid(cols = vars(variable)) +
   scale_shape_manual(values = c(21, 22)) +
   scale_colour_manual(values = cbPalette) +
-  labs(title = "SIMON dataset. HC measures through time.",
+  labs(title = "HC measures through time",
        x = "Time (years)",
        y = "HC measure (Z-scored)",
        colour = "Scanner manufacturer")
 
 ggsave(here("plots/simon_hc-measures_time.png"),
-       width = 15, height = 7, units = "in", dpi = "retina")
+       width = 7, height = 5, units = "in", dpi = 600)
+
+ggsave(here("plots/simon_hc-measures_time.tiff"),
+       width = 7, height = 5, units = "in", device = "tiff", dpi = 600)
