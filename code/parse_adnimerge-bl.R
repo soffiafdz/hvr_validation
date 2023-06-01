@@ -43,7 +43,7 @@ adnimerge         <- fread(here("data/ADNIMERGE.csv"),
                                       "RAVLT_forgetting",
                                       "RAVLT_perc_forgetting",
                                       "EXAMDATE", "Month",
-                                      "ABETA", "PIB", "AV45",
+                                      "ABETA", "PIB", "AV45", "FBB",
                                       "APOE4", "TAU", "PTAU",
                                       "Ventricles", "Hippocampus", "ICV",
                                       "FSVERSION"))
