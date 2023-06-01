@@ -150,5 +150,6 @@ volumes_hcvcag  <- firstpass[!cnn_qc_fails, on = "PTID"] # Segm -> 1639
 volumes_hcvcag[, ID := NULL]
 
 ## Export
+readr::write_rds(acq_fails, here("data/rds/ptid_qc_discarded.rds"))
 readr::write_rds(volumes, here("data/rds/adni-bl_volumes_hcvc.rds"))
 readr::write_rds(volumes_hcvcag, here("data/rds/adni-bl_volumes_hcvc-ag.rds"))

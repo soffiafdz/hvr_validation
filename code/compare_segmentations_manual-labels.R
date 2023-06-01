@@ -141,33 +141,42 @@ scores[, `:=`(mean = mean(kappa),
 setorder(scores, kappa)
 
 ### Boxplot Kappas HCVC
-f_plot1 <- here("plots/manual-labels_segm-dice_hcvc.png")
-#if(!file.exists(f_plot1)) {
-if(TRUE) {
+f_plot1  <- here("plots/manual-labels_segm-dice_hcvc")
+fp1_png  <- paste0(f_plot1, ".png")
+fp1_tiff <- paste0(f_plot1, ".tiff")
+if(!file.exists(fp1_png) || !file.exists(fp1_tiff)) {
+#if(TRUE) {
   ggplot(scores, aes(x = method, y = kappa)) +
-      theme_linedraw(base_size = 12) +
-      theme(
-         text = element_text(size = 12),
-         axis.text.y = element_text(size = 10),
-         axis.text.x = element_text(size = 10, angle = 90,
-                                    hjust = 0.95, vjust = 0.2)) +
-      geom_jitter(height = 0, width = .05, shape = 21, size = .4) +
-      geom_violin(trim = FALSE, alpha = .1) +
-      stat_summary(fun.data = "median_hilow",
-                   geom = "pointrange",
-                   alpha = 0.7, colour = "red") +
-      geom_label_repel(data = scores[, .SD[.N/2], .(method, roi, side)],
-                       aes(y = kappa,
-                           label = glue("{round(mean, 3)} ({round(sd, 3)})")),
-                       alpha = 0.7, size = 3) +
-      facet_grid(factor(roi, levels = c("HC", "CSF")) ~ side,
-                 scales = "free") +
-      ylab('Overlap Kappa') +
-      xlab('Segmentation Method') +
-      #ylim(0.4,1.0) +
-      ggtitle("Automatic segmentation: HC and CSF")
+    theme_linedraw(base_size = 12) +
+    theme(
+       text = element_text(size = 12),
+       axis.text.y = element_text(size = 10),
+       axis.text.x = element_text(size = 10, angle = 90,
+                                  hjust = 0.95, vjust = 0.2)) +
+    geom_jitter(height = 0, width = .05, shape = 21, size = .4) +
+    geom_violin(trim = FALSE, alpha = .1) +
+    stat_summary(fun.data = "median_hilow",
+                 geom = "pointrange",
+                 alpha = 0.7, colour = "red", size = 0.075) +
+    geom_label_repel(data = scores[order(kappa), .SD[.N/2], .(method, roi, side)],
+                     aes(y = kappa,
+                         label = glue("{round(mean, 3)}\n({round(sd, 3)})")),
+                     alpha = 0.7, size = 2.5) +
+    facet_grid(factor(roi, levels = c("HC", "CSF")) ~ side,
+               scales = "free") +
+    ylab('Overlap Kappa') +
+    xlab('Segmentation Method') +
+    #ylim(0.4,1.0) +
+    ggtitle("Automatic segmentation: HC and CSF")
 
-  ggsave(f_plot1, width = 5, height = 5, units = "in", dpi = "retina")
+  if(!file.exists(fp1_png)){
+    ggsave(fp1_png, width = 5, height = 5, units = "in", dpi = 600)
+  }
+
+  if(!file.exists(fp1_tiff)){
+    ggsave(fp1_tiff, width = 5, height = 5, units = "in",
+           device = "tiff", dpi = 600)
+  }
 }
 
 ### Boxplot Kappas HCVC+AG:
@@ -245,27 +254,37 @@ vols[, SEGMENTATION := factor(SEGMENTATION,
                               levels = c("cnn", "malf", "nlpb"),
                               labels = c("CNN", "MALF", "NLPB"))]
 
-f_plot3 <- here("plots/manual-labels_segm-corr_hcvc.png")
-#if(!file.exists(f_plot3)) {
-if(TRUE) {
+f_plot3  <- here("plots/manual-labels_segm-corr_hcvc")
+fp3_png  <- paste0(f_plot3, ".png")
+fp3_tiff <- paste0(f_plot3, ".tiff")
+if(!file.exists(fp3_png) || !file.exists(fp3_tiff)) {
+#if(TRUE) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   ggplot(vols, aes(x = VOLUME, y = MANUAL, colour = SEGMENTATION)) +
-    theme_linedraw(base_size = 24) +
-    theme(text = element_text(size = 24), legend.position = "bottom") +
+    theme_linedraw(base_size = 12) +
+    theme(text = element_text(size = 12), legend.position = "bottom") +
     geom_point(size = 2, shape = 21) +
     geom_abline(intercept = 0, slope = 1,
                 colour = cbPalette[1], linetype = "dashed") +
     geom_smooth(method = "lm", alpha = .2) +
-    stat_cor(size = 5, label.x.npc = "right", label.y.npc = "bottom", hjust = "inward") +
+    stat_cor(size = 2.7, label.x.npc = "right", label.y.npc = "bottom",
+             hjust = "inward") +
     facet_grid(rows = vars(ROI), cols = vars(SIDE), scales = "free") +
     scale_colour_manual(values = cbPalette[-1]) +
     labs(title = "Scatter plots: manual vs computed volumes",
          x = "Computed volume", y = "Manual volume",
          colour = "Segmentation method")
 
-    ggsave(f_plot3, width = 18, height = 10, units = "in", dpi = "retina")
+  if(!file.exists(fp3_png)){
+    ggsave(fp3_png, width = 8, height = 5, units = "in", dpi = 600)
+  }
+
+  if(!file.exists(fp3_tiff)){
+    ggsave(fp3_tiff, width = 8, height = 5, units = "in",
+           device = "tiff", dpi = 600)
+  }
 }
 
 # Bland-Altman plot
@@ -278,15 +297,17 @@ vols[, `:=`(MEAN_DIFF = mean(DIFF),
 
 
 
-f_plot4 <- here("plots/manual-labels_segm-bland-altman_hcvc.png")
-#if(!file.exists(f_plot4)) {
-if(TRUE) {
+f_plot4  <- here("plots/manual-labels_segm-bland-altman_hcvc")
+fp4_png  <- paste0(f_plot4, ".png")
+fp4_tiff <- paste0(f_plot4, ".tiff")
+if(!file.exists(fp4_png) || !file.exists(fp4_tiff)) {
+#if(TRUE) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   ggplot(vols, aes(x = AVG, y = DIFF)) +
-    theme_linedraw(base_size = 24) +
-    theme(text = element_text(size = 24), legend.position = "bottom") +
+    theme_linedraw(base_size = 12) +
+    theme(text = element_text(size = 12), legend.position = "bottom") +
     geom_point(shape = 21, colour = cbPalette[1]) +
     geom_smooth(method = "lm", alpha = .1, colour = cbPalette[3]) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
@@ -294,23 +315,30 @@ if(TRUE) {
                colour = cbPalette[2], linetype = "dashed", alpha = .7) +
     geom_text(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(x = Inf, y = MEAN_DIFF, label = round(MEAN_DIFF, 3)),
-               hjust = "inward", nudge_y = 70) +
+               hjust = "inward", nudge_y = 70, size = 2) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = LOW_CI),
                colour = cbPalette[2], linetype = "dashed", alpha = .7) +
     geom_text(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(x = Inf, y = LOW_CI, label = round(LOW_CI, 3)),
-               hjust = "inward", nudge_y = 70) +
+               hjust = "inward", nudge_y = 70, size = 2) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = HI_CI),
                colour = cbPalette[2], linetype = "dashed", alpha = .7) +
     geom_text(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(x = Inf, y = HI_CI, label = round(HI_CI, 3)),
-               hjust = "inward", nudge_y = 70) +
+               hjust = "inward", nudge_y = 70, size = 2) +
     facet_grid(rows = vars(ROI), cols = vars(SEGMENTATION), scales = "free") +
     labs(title = "Bland-Altman plots",
          x = "Mean manual and computed volumes",
          y = "Manual - computed volumes")
 
-  ggsave(f_plot4, width = 20, height = 10, units = "in", dpi = "retina")
+  if(!file.exists(fp4_png)){
+    ggsave(fp4_png, width = 10, height = 5, units = "in", dpi = 600)
+  }
+
+  if(!file.exists(fp4_tiff)){
+    ggsave(fp4_tiff, width = 10, height = 5, units = "in",
+           device = "tiff", dpi = 600)
+  }
 }
