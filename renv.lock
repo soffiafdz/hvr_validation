@@ -278,7 +278,7 @@
     },
     "bootES": {
       "Package": "bootES",
-      "Version": "1.2.1",
+      "Version": "1.3.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -286,7 +286,7 @@
         "boot",
         "stats"
       ],
-      "Hash": "2069ed4878ce8015e90ebb629835c84b"
+      "Hash": "f0d974d86ee74bcd1da423345b6a800a"
     },
     "brio": {
       "Package": "brio",
