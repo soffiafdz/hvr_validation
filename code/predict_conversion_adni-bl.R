@@ -85,8 +85,8 @@ res_tst   <- vector("list", length = 5)
 
 # Base
 f_aboost_base   <- here("data/rds/adni-bl_model-conv3_adaboost_base.rds")
-#if (file.exists(f_aboost_base)) {
-if (FALSE) {
+if (file.exists(f_aboost_base)) {
+#if (FALSE) {
   aboost_base   <- read_rds(f_aboost_base)
 } else {
   cols          <- c("CONV_3Y", covars)
@@ -109,8 +109,8 @@ preds_base      <- fifelse(preds_base_dt$Progressor > .5, 1, 0)
 
 # HC
 f_aboost_hc     <- here("data/rds/adni-bl_model-conv3_adaboost_hc.rds")
-#if (file.exists(f_aboost_hc)) {
-if (FALSE) {
+if (file.exists(f_aboost_hc)) {
+#if (FALSE) {
   aboost_hc     <- read_rds(f_aboost_hc)
 } else {
   cols          <- c("CONV_3Y", "Left_HC", "Right_HC", covars)
@@ -132,8 +132,8 @@ preds_hc        <- fifelse(preds_hc_dt$Progressor > .5, 1, 0)
 
 # HC_stx
 f_aboost_hcstx  <- here("data/rds/adni-bl_model-conv3_adaboost_hc_stx.rds")
-#if (file.exists(f_aboost_hcstx)) {
-if (FALSE) {
+if (file.exists(f_aboost_hcstx)) {
+#if (FALSE) {
   aboost_hcstx  <- read_rds(f_aboost_hcstx)
 } else {
   cols          <- c("CONV_3Y", "Left_HC_stx", "Right_HC_stx", covars)
@@ -156,8 +156,8 @@ preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
 # HC_norm
 f_aboost_hcnorm <- here("data/rds/adni-bl_model-conv3_adaboost_hc_norm.rds")
-#if (file.exists(f_aboost_hcnorm)) {
-if (FALSE) {
+if (file.exists(f_aboost_hcnorm)) {
+#if (FALSE) {
   aboost_hcnorm <- read_rds(f_aboost_hcnorm)
 } else {
   cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
@@ -180,8 +180,8 @@ preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_aboost_hvr    <- here("data/rds/adni-bl_model-conv3_adaboost_hvr.rds")
-#if (file.exists(f_aboost_hvr)) {
-if(FALSE) {
+if (file.exists(f_aboost_hvr)) {
+#if(FALSE) {
   aboost_hvr    <- read_rds(f_aboost_hvr)
 } else {
   cols          <- c("CONV_3Y", "Left_HVR", "Right_HVR", covars)
@@ -250,8 +250,8 @@ res_tst         <- vector("list", length = 5)
 
 # Base
 f_svm_base      <- here("data/rds/adni-bl_model-conv3_svm_base.rds")
-#if (file.exists(f_svm_base)) {
-if (FALSE) {
+if (file.exists(f_svm_base)) {
+#if (FALSE) {
   svm_base      <- read_rds(f_svm_base)
 } else {
   cols          <- c("CONV_3Y", covars)
@@ -274,8 +274,8 @@ preds_base      <- fifelse(preds_base_dt$Progressor > .5, 1, 0)
 
 # HC
 f_svm_hc        <- here("data/rds/adni-bl_model-conv3_svm_hc.rds")
-#if (file.exists(f_svm_hc)) {
-if (FALSE) {
+if (file.exists(f_svm_hc)) {
+#if (FALSE) {
   svm_hc        <- read_rds(f_svm_hc)
 } else {
   cols          <- c("CONV_3Y", "Left_HC", "Right_HC", covars)
@@ -297,8 +297,8 @@ preds_hc        <- fifelse(preds_hc_dt$Progressor > .5, 1, 0)
 
 # HC_stx
 f_svm_hcstx     <- here("data/rds/adni-bl_model-conv3_svm_hc_stx.rds")
-#if (file.exists(f_svm_hcstx)) {
-if (FALSE) {
+if (file.exists(f_svm_hcstx)) {
+#if (FALSE) {
   svm_hcstx     <- read_rds(f_svm_hcstx)
 } else {
   cols          <- c("CONV_3Y", "Left_HC_stx", "Right_HC_stx", covars)
@@ -321,8 +321,8 @@ preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
 # HC_norm
 f_svm_hcnorm <- here("data/rds/adni-bl_model-conv3_svm_hc_norm.rds")
-#if (file.exists(f_svm_hcnorm)) {
-if (FALSE) {
+if (file.exists(f_svm_hcnorm)) {
+#if (FALSE) {
   svm_hcnorm <- read_rds(f_svm_hcnorm)
 } else {
   cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
@@ -345,8 +345,8 @@ preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_svm_hvr    <- here("data/rds/adni-bl_model-conv3_svm_hvr.rds")
-#if (file.exists(f_svm_hvr)) {
-if(FALSE) {
+if (file.exists(f_svm_hvr)) {
+#if(FALSE) {
   svm_hvr    <- read_rds(f_svm_hvr)
 } else {
   cols          <- c("CONV_3Y", "Left_HVR", "Right_HVR", covars)
@@ -415,8 +415,8 @@ res_tst         <- vector("list", length = 5)
 
 # Base
 f_nbayes_base      <- here("data/rds/adni-bl_model-conv3_nbayes_base.rds")
-#if (file.exists(f_nbayes_base)) {
-if (FALSE) {
+if (file.exists(f_nbayes_base)) {
+#if (FALSE) {
   nbayes_base      <- read_rds(f_nbayes_base)
 } else {
   cols          <- c("CONV_3Y", covars)
@@ -439,8 +439,8 @@ preds_base      <- fifelse(preds_base_dt$Progressor > .5, 1, 0)
 
 # HC
 f_nbayes_hc        <- here("data/rds/adni-bl_model-conv3_nbayes_hc.rds")
-#if (file.exists(f_nbayes_hc)) {
-if (FALSE) {
+if (file.exists(f_nbayes_hc)) {
+#if (FALSE) {
   nbayes_hc        <- read_rds(f_nbayes_hc)
 } else {
   cols          <- c("CONV_3Y", "Left_HC", "Right_HC", covars)
@@ -462,8 +462,8 @@ preds_hc        <- fifelse(preds_hc_dt$Progressor > .5, 1, 0)
 
 # HC_stx
 f_nbayes_hcstx     <- here("data/rds/adni-bl_model-conv3_nbayes_hc_stx.rds")
-#if (file.exists(f_nbayes_hcstx)) {
-if (FALSE) {
+if (file.exists(f_nbayes_hcstx)) {
+#if (FALSE) {
   nbayes_hcstx     <- read_rds(f_nbayes_hcstx)
 } else {
   cols          <- c("CONV_3Y", "Left_HC_stx", "Right_HC_stx", covars)
@@ -486,8 +486,8 @@ preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
 # HC_norm
 f_nbayes_hcnorm <- here("data/rds/adni-bl_model-conv3_nbayes_hc_norm.rds")
-#if (file.exists(f_nbayes_hcnorm)) {
-if (FALSE) {
+if (file.exists(f_nbayes_hcnorm)) {
+#if (FALSE) {
   nbayes_hcnorm <- read_rds(f_nbayes_hcnorm)
 } else {
   cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
@@ -510,8 +510,8 @@ preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_nbayes_hvr    <- here("data/rds/adni-bl_model-conv3_nbayes_hvr.rds")
-#if (file.exists(f_nbayes_hvr)) {
-if(FALSE) {
+if (file.exists(f_nbayes_hvr)) {
+#if(FALSE) {
   nbayes_hvr    <- read_rds(f_nbayes_hvr)
 } else {
   cols          <- c("CONV_3Y", "Left_HVR", "Right_HVR", covars)

@@ -8,21 +8,29 @@ library(GGally)
 ## Parse volumes
 # ADNI FSvols
 adnimerge     <- here("data/rds/adnimerge_baseline.rds") |> read_rds()
-adni_vols     <- adnimerge[, .(PTID, DX, SCANDATE, Hippocampus, FSVERSION)]
-rm(adnimerge)
+adni_vols     <- adnimerge[DX != "",
+                           .(PTID, DX, SCANDATE, Hippocampus, FSVERSION)]
+#rm(adnimerge)
 
 # House FSvols
-fs6_vols      <- here("data/ADNI_FS_hc.csv") |>
-                fread(select = c(1,3,5,6),
-                      col.names = c("PTID", "DATE", "LHC", "RHC"))
+fs6_vols1     <- here("data/ADNI_FS_hc.csv") |>
+                fread(select = c(1, 3, 5:7),
+                      col.names = c("PTID", "DATE", "LHC", "RHC", "BRAIN"))
+fs6_vols2     <- here("data/ADNI_FS_hc_vc.csv") |>
+                fread(select = c(1, 3, 8:9),
+                      col.names = c("PTID", "DATE", "LCSF", "RCSF"))
+
+fs6_vols      <- fs6_vols1[fs6_vols2, on = .(PTID, DATE)]
 fs6_vols[, FS_house := LHC + RHC]
 
 # Merge
-fs_vols       <- fs6_vols[adni_vols[!is.na(Hippocampus)],
+fs_vols       <- fs6_vols[adni_vols,
                           on = .(PTID, DATE = SCANDATE),
-                          .(PTID, DX, LHC, RHC,
-                            FS_house, FSVERSION, FS_adni = Hippocampus)]
-rm(adni_vols, fs6_vols)
+                          .(PTID, DX, SCANDATE = DATE,
+                            LHC, RHC, HC = LHC + RHC,
+                            LCSF, RCSF, CSF = LCSF + RCSF,
+                            BRAIN, FSVERSION, FS_house, FS_adni = Hippocampus)]
+#rm(adni_vols, fs6_vols)
 
 fs_vols[, DX := factor(DX,
                        levels = c("CN", "MCI", "Dementia"),
@@ -45,7 +53,7 @@ write_rds(fs_vols, here("data/rds/adni-bl_volumes_freesurfer.rds"))
 cbPalette     <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                    "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
-g <- ggpairs(fs_vols[!is.na(DX) & !is.na(FS_house),
+g <- ggpairs(fs_vols[!is.na(FS_house) & !is.na(FS_adni),
                      .(PTID, DX, FS_house, FS_adni)],
              columns = 3:4,
              aes(colour = DX, alpha = .5)) +
