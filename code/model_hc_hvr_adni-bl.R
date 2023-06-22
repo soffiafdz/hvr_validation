@@ -48,7 +48,7 @@ amy_positive    <- hc_dt[ABETA_pos == "Positive" & DX != "" &
                          !is.na(RAVLT_immediate) &
                          !is.na(RAVLT_learning) &
                          !is.na(RAVLT_forgetting)]
-rm(hc_dt)
+#rm(hc_dt)
 
 # Wide -> long
 amy_positive    <- melt(amy_positive, measure.vars = patterns("Right|Left"))
