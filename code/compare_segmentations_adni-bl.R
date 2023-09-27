@@ -8,6 +8,8 @@ library(ggplot2)
 library(GGally)
 library(ggtext)
 library(rlang)
+library(gtsummary)
+library(dunn.test)
 
 ## Read RDS objects
 adnimerge     <- here("data/rds/adnimerge_baseline.rds") |>
@@ -22,11 +24,13 @@ adni          <- adnimerge[, .(PTID, PTGENDER)][fs_volumes, on = "PTID"]
 volumes       <- seg_volumes[adni,
                             on = "PTID",
                             .(PTID, METHOD, DX, PTGENDER,
-                              FS_ADNI = FS_adni / 1000,
-                              HC = HC_l + HC_r,
+                              FS_ADNI = FS_adni * SCALEFACTOR / 2000,
+                              #HC = HC_stx_l + HC_stx_r,
+                              HC = HC_stx_mean,
                               HVR = HVR_mean)]
-rm(adnimerge, fs_volumes, seg_volumes, adni)
+#rm(adnimerge, fs_volumes, seg_volumes, adni)
 
+## HC volume
 hcv.dt        <- dcast(volumes[!is.na(METHOD), -"HVR"],
                        ... ~ METHOD, value.var = "HC")
 
@@ -36,6 +40,47 @@ setnames(hcv.dt,
 
 setcolorder(hcv.dt, c(1:4, 6))
 
+hcv.dt.long   <- melt(hcv.dt, id.vars = c(1:3),
+                      variable.name = "METHOD", value.name = "HCV")
+hcv.dt.long   <- hcv.dt.long[!is.na(HCV)]
+
+# Table
+hcv.dt[, -c("PTID", "PTGENDER")] |>
+  tbl_summary(by = DX,
+              label = list(FS_ADNI ~ "FreeSurfer (v4.3 & v5.1)",
+                           FS_V6 ~ "FreeSurfer (v6.0)"),
+              statistic = all_continuous() ~ "{mean} ({sd})",
+              missing_text = "Failures") |>
+  modify_header(label ~ "**Automatic Method**") |>
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3") ~ "**Clinical Label**") |>
+  add_n() |>
+  as_flex_table() |>
+  flextable::save_as_docx(path = "data/derivatives/adni-bl_hcv-table.docx")
+
+# Post-hoc differences between Methods by DX
+#hcv_dunn.dt <- hcv.dt.long[, dunn.test(HCV, METHOD,
+                                       #method = "bonferroni", list = TRUE), DX]
+
+#hcv_dunn.dt[order(DX, comparisons)] |>
+  #flextable() |>
+  #separate_header() |>
+  #colformat_double(digits = 3) |>
+  #labelizor(part = "header", labels = c("chi2" = "Chi-squared",
+                                        #"P" = "p-value",
+                                        #"P.adjusted" = "Adjusted p-value",
+                                        #"comparisons" = "Comparisons")) |>
+  #bold(part = "header") |>
+  ##fix_border_issues() |>
+  ##bold(~ P < 0.05, j = 4) |>
+  ##bold(~ P.adjusted < 0.05, j = 5) |>
+  #autofit() |>
+  #save_as_docx(path = "data/derivatives/adni-bl_hcv-posthoc.docx")
+
+
+
+
+
+## HVR
 hvr.dt        <- dcast(volumes[!is.na(METHOD), -"HC"],
                        ... ~ METHOD, value.var = "HVR")
 
@@ -46,12 +91,21 @@ setnames(hvr.dt,
 
 setcolorder(hvr.dt, c(1:3, 5))
 
+# Table
+hvr.dt[, -c("PTID", "PTGENDER")] |>
+  tbl_summary(by = DX,
+              label = FS_V6 ~ "FreeSurfer (v6.0)",
+              statistic = all_continuous() ~ "{mean} ({sd})",
+              missing = "no") |>
+  modify_header(label ~ "**Automatic Method**") |>
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3") ~ "**Clinical Label**") |>
+  add_n() |>
+  as_flex_table() |>
+  flextable::save_as_docx(path = "data/derivatives/adni-bl_hvr-table.docx")
+
+
 ## Effect sizes
 # HC volume (sum of sides)
-hcv.dt.long   <- melt(hcv.dt, id.vars = c(1:3),
-                      variable.name = "METHOD", value.name = "HCV")
-hcv.dt.long   <- hcv.dt.long[!is.na(HCV)]
-
 mtds  <- hcv.dt.long[, levels(METHOD)]
 dxs   <- hcv.dt.long[, levels(DX)][-2] # Focus on CN-AD difference
 
@@ -178,7 +232,7 @@ diag_fun  <- function(data, mapping, var, labels.dt,...) {
     geom_richtext(data = labels.dt[labels.dt$METHOD == as_label(mapping$x)],
                   aes(label = LABEL), inherit.aes = FALSE,
                   colour = "Black", fill = "White",
-                  size = 2.5, x = -Inf, y = -Inf, hjust = -0.1, vjust = -0.25)
+                  size = 3.5, x = -Inf, y = -Inf, hjust = -0.1, vjust = -0.25)
 }
 
 # HC By Sex
@@ -186,7 +240,7 @@ g <- ggpairs(hcv.dt, columns = 4:8,
              aes(colour = PTGENDER, alpha = 0.7),
              diag = list(continuous = wrap(diag_fun,
                                            labels.dt = effvals_hcv_sex))) +
-  theme_linedraw(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(text = element_text(size = 12)) +
   scale_fill_manual(values = cbPalette[-1]) +
   scale_colour_manual(values = cbPalette[-1]) +
@@ -207,7 +261,7 @@ g <- ggpairs(hvr.dt, columns = 4:7,
              aes(colour = PTGENDER, alpha = 0.7),
              diag = list(continuous = wrap(diag_fun,
                                            labels.dt = effvals_hvr_sex))) +
-  theme_linedraw(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(text = element_text(size = 12)) +
   scale_fill_manual(values = cbPalette[-1]) +
   scale_colour_manual(values = cbPalette[-1]) +
@@ -228,11 +282,11 @@ g <- ggpairs(hcv.dt, columns = 4:8,
              aes(colour = DX, alpha = 0.7),
              diag = list(continuous = wrap(diag_fun,
                                            labels.dt = effvals_hcv_dx))) +
-  theme_linedraw(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(text = element_text(size = 12)) +
   scale_fill_manual(values = cbPalette[-1]) +
-  scale_colour_manual(values = cbPalette[-1]) +
-  labs(title = "Similarity of HCvol between segmentations — DX")
+  scale_colour_manual(values = cbPalette[-1])
+  #labs(title = "Similarity of HCvol between segmentations — DX")
 
 png(here("plots/adni-bl_similarity_hcv_dx.png"),
     width = 13, height = 7, units = "in", res = 600)
@@ -249,11 +303,11 @@ g <- ggpairs(hvr.dt, columns = 4:7,
              aes(colour = DX, alpha = 0.7),
              diag = list(continuous = wrap(diag_fun,
                                            labels.dt = effvals_hvr_dx))) +
-  theme_linedraw(base_size = 12) +
+  theme_classic(base_size = 12) +
   theme(text = element_text(size = 12)) +
   scale_fill_manual(values = cbPalette[-1]) +
-  scale_colour_manual(values = cbPalette[-1]) +
-  labs(title = "Similarity of HVR between segmentations — DX")
+  scale_colour_manual(values = cbPalette[-1])
+  #labs(title = "Similarity of HVR between segmentations — DX")
 
 png(here("plots/adni-bl_similarity_hvr_dx.png"),
     width = 13, height = 7, units = "in", res = 600)
