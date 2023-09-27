@@ -8,6 +8,7 @@ library(ggplot2)
 library(ggridges)
 library(ggsignif)
 library(ggtext)
+library(gridExtra)
 
 ## Calculate and compare correlations of HC & Age | Memory | Cognition
 ## ADNI data CN|MCI|AD
@@ -164,8 +165,8 @@ perms.dif.dt[METHOD == "CNN-FS_V6", COMP := "HVR: CNN - FS_V6"]
 
 
 ## Plots
-cbPalette     <- c("#999999A0", "#E69F00A0", "#56B4E9A0", "#009E73A0",
-                   "#F0E442A0", "#0072B2A0", "#D55E00A0", "#CC79A7A0")
+cbPalette     <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 ## Correlations
 corr.dt[, DX := factor(DX, levels = c("CN", "MCI", "Dementia"),
@@ -204,6 +205,9 @@ corr.perm.sign.dt <- corr.perm.dt[Pval < 0.05,
                                   .(DX, COVAR, METHOD, Pval,
                                     HCv = "HCv", HVR = "HVR", LABEL = "*")]
 
+corr.perm.sign.dt[Pval < 0.01, LABEL := "**"]
+corr.perm.sign.dt[Pval < 0.001, LABEL := "***"]
+
 corr.perm.sign.dt[, COVAR := factor(COVAR,
                                     levels = c("AGE", "RAVLT_learning", "ADAS13"),
                                     labels = c("Age", "Memory", "Cognition"))]
@@ -211,218 +215,317 @@ corr.perm.sign.dt[, COVAR := factor(COVAR,
 corr.perm.sign.dt <- corr.dt[, .(Y = max(CIhigh)), .(DX, COVAR, METHOD)
                              ][corr.perm.sign.dt, on = .(DX, COVAR, METHOD)]
 
-# CNN
-ggplot(corr.dt[METHOD == "CNN"], aes(HC, R, colour = HC)) +
-  theme_linedraw(base_size = 12) +
+# FS_V6
+p1  <- ggplot(corr.dt[METHOD == "FS_V6"], aes(HC, R, colour = HC)) +
+  theme_classic(base_size = 12) +
   theme(text = element_text(size = 12), legend.position = "none") +
   facet_grid(rows = vars(DX), cols = vars(COVAR)) +
-  geom_hline(yintercept = 0, linetype = "dashed", colour = cbPalette[1]) +
-  geom_errorbar(aes(ymin = CIlow, ymax = CIhigh), width = 0.2) +
-  geom_point(shape = 21, fill = "white", size = 3, stroke = 1) +
-  geom_text(aes(label = SIGN, y = CIhigh), colour = "black", vjust = .1) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             alpha = .5, colour = cbPalette[1]) +
+  geom_errorbar(data = corr.dt[METHOD == "FS_V6" & HC == "HCv"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = .2)) +
+  geom_point(data = corr.dt[METHOD == "FS_V6" & HC == "HCv"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "FS_V6" & HC == "HCv"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "FS_V6" & HC == "HCv"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = -.03, hjust = "right") +
+  geom_errorbar(data = corr.dt[METHOD == "FS_V6" & HC == "HVR"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = -.2)) +
+  geom_point(data = corr.dt[METHOD == "FS_V6" & HC == "HVR"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "FS_V6" & HC == "HVR"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "FS_V6" & HC == "HVR"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = .03, hjust = "left") +
+  scale_colour_manual(values = cbPalette[2:3]) +
+  ylim(-.6, .5) +
+  labs(title = "FS_V6", x = "HC measure", y = "Pearsons' r",
+       caption = "")
+
+#here("plots/adni-bl_hcv-hvr_corrs_fs6.png") |>
+  #ggsave(width = 4, height = 7, units = "in", dpi = 600)
+
+#here("plots/adni-bl_hcv-hvr_corrs_fs6.tiff") |>
+  #ggsave(width = 4, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
+
+# CNN
+p2  <- ggplot(corr.dt[METHOD == "CNN"], aes(HC, R, colour = HC)) +
+  theme_classic(base_size = 12) +
+  theme(text = element_text(size = 12), legend.position = "none") +
+  facet_grid(rows = vars(DX), cols = vars(COVAR)) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             alpha = .5, colour = cbPalette[1]) +
+  geom_errorbar(data = corr.dt[METHOD == "CNN" & HC == "HCv"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = .2)) +
+  geom_point(data = corr.dt[METHOD == "CNN" & HC == "HCv"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "CNN" & HC == "HCv"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "CNN" & HC == "HCv"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = -.03, hjust = "right") +
+  geom_errorbar(data = corr.dt[METHOD == "CNN" & HC == "HVR"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = -.2)) +
+  geom_point(data = corr.dt[METHOD == "CNN" & HC == "HVR"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "CNN" & HC == "HVR"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "CNN" & HC == "HVR"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = .03, hjust = "left") +
   geom_signif(data = corr.perm.sign.dt[METHOD == "CNN"],
               aes(xmin = HCv, xmax = HVR, annotations = LABEL,
-                  y_position = Y + .1), manual = TRUE,
+                  y_position = Y + .13), manual = TRUE, colour = cbPalette[1],
               textsize = 3, inherit.aes = FALSE) +
   scale_colour_manual(values = cbPalette[2:3]) +
-  labs(title = "CNN segmentations", x = "HC measure", y = "Pearsons' r",
-       caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
+  ylim(-.6, .5) +
+  labs(title = "CNN", x = "HC measure", y = "Pearsons' r",
+       caption = "")
 
-here("plots/adni-bl_hcv-hvr_corrs_cnn.png") |>
-  ggsave(width = 4, height = 7, units = "in", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_cnn.png") |>
+  #ggsave(width = 4, height = 7, units = "in", dpi = 600)
 
-here("plots/adni-bl_hcv-hvr_corrs_cnn.tiff") |>
-  ggsave(width = 4, height = 7, units = "in",
-           device = "tiff", dpi = 600)
-# FS_V6
-ggplot(corr.dt[METHOD == "FS_V6"], aes(HC, R, colour = HC)) +
-  theme_linedraw(base_size = 12) +
-  theme(text = element_text(size = 12), legend.position = "none") +
-  facet_grid(rows = vars(DX), cols = vars(COVAR)) +
-  geom_hline(yintercept = 0, linetype = "dashed", colour = cbPalette[1]) +
-  geom_errorbar(aes(ymin = CIlow, ymax = CIhigh), width = 0.2) +
-  geom_point(shape = 21, fill = "white", size = 3, stroke = 1) +
-  geom_text(aes(label = SIGN, y = CIhigh), colour = "black", vjust = .1) +
-  scale_colour_manual(values = cbPalette[2:3]) +
-  labs(title = "FreeSurfer segmentations", x = "HC measure", y = "Pearsons' r",
-       caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
-
-here("plots/adni-bl_hcv-hvr_corrs_fs6.png") |>
-  ggsave(width = 4, height = 7, units = "in", dpi = 600)
-
-here("plots/adni-bl_hcv-hvr_corrs_fs6.tiff") |>
-  ggsave(width = 4, height = 7, units = "in",
-           device = "tiff", dpi = 600)
-
-# NLPB
-ggplot(corr.dt[METHOD == "NLPB"], aes(HC, R, colour = HC)) +
-  theme_linedraw(base_size = 12) +
-  theme(text = element_text(size = 12), legend.position = "none") +
-  facet_grid(rows = vars(DX), cols = vars(COVAR)) +
-  geom_hline(yintercept = 0, linetype = "dashed", colour = cbPalette[1]) +
-  geom_errorbar(aes(ymin = CIlow, ymax = CIhigh), width = 0.2) +
-  geom_point(shape = 21, fill = "white", size = 3, stroke = 1) +
-  geom_text(aes(label = SIGN, y = CIhigh), colour = "black", vjust = .1) +
-  geom_signif(data = corr.perm.sign.dt[METHOD == "NLPB"],
-              aes(xmin = HCv, xmax = HVR, annotations = LABEL,
-                  y_position = Y + .1), manual = TRUE,
-              textsize = 3, inherit.aes = FALSE) +
-  scale_colour_manual(values = cbPalette[2:3]) +
-  labs(title = "NLPB segmentations", x = "HC measure", y = "Pearsons' r",
-       caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
-
-here("plots/adni-bl_hcv-hvr_corrs_nlpb.png") |>
-  ggsave(width = 4, height = 7, units = "in", dpi = 600)
-
-here("plots/adni-bl_hcv-hvr_corrs_nlpb.tiff") |>
-  ggsave(width = 4, height = 7, units = "in",
-           device = "tiff", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_cnn.tiff") |>
+  #ggsave(width = 4, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
 
 # MALF
-ggplot(corr.dt[METHOD == "MALF"], aes(HC, R, colour = HC)) +
-  theme_linedraw(base_size = 12) +
+p3  <- ggplot(corr.dt[METHOD == "MALF"], aes(HC, R, colour = HC)) +
+  theme_classic(base_size = 12) +
   theme(text = element_text(size = 12), legend.position = "none") +
   facet_grid(rows = vars(DX), cols = vars(COVAR)) +
-  geom_hline(yintercept = 0, linetype = "dashed", colour = cbPalette[1]) +
-  geom_errorbar(aes(ymin = CIlow, ymax = CIhigh), width = 0.2) +
-  geom_point(shape = 21, fill = "white", size = 3, stroke = 1) +
-  geom_text(aes(label = SIGN, y = CIhigh), colour = "black", vjust = .1) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             alpha = .5, colour = cbPalette[1]) +
+  geom_errorbar(data = corr.dt[METHOD == "MALF" & HC == "HCv"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = .2)) +
+  geom_point(data = corr.dt[METHOD == "MALF" & HC == "HCv"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "MALF" & HC == "HCv"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "MALF" & HC == "HCv"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = -.03, hjust = "right") +
+  geom_errorbar(data = corr.dt[METHOD == "MALF" & HC == "HVR"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = -.2)) +
+  geom_point(data = corr.dt[METHOD == "MALF" & HC == "HVR"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "MALF" & HC == "HVR"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "MALF" & HC == "HVR"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = .03, hjust = "left") +
   geom_signif(data = corr.perm.sign.dt[METHOD == "MALF"],
               aes(xmin = HCv, xmax = HVR, annotations = LABEL,
-                  y_position = Y + .1), manual = TRUE,
+                  y_position = Y + .1), manual = TRUE, colour = cbPalette[1],
               textsize = 3, inherit.aes = FALSE) +
   scale_colour_manual(values = cbPalette[2:3]) +
-  labs(title = "MALF segmentations", x = "HC measure", y = "Pearsons' r",
+  ylim(-.6, .4) +
+  labs(title = "MALF", x = "HC measure", y = "Pearsons' r",
+       caption = "")
+
+#here("plots/adni-bl_hcv-hvr_corrs_malf.png") |>
+  #ggsave(width = 4, height = 7, units = "in", dpi = 600)
+
+#here("plots/adni-bl_hcv-hvr_corrs_malf.tiff") |>
+  #ggsave(width = 4, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
+
+# NLPB
+p4  <- ggplot(corr.dt[METHOD == "NLPB"], aes(HC, R, colour = HC)) +
+  theme_classic(base_size = 12) +
+  theme(text = element_text(size = 12), legend.position = "none") +
+  facet_grid(rows = vars(DX), cols = vars(COVAR)) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             alpha = .5, colour = cbPalette[1]) +
+  geom_errorbar(data = corr.dt[METHOD == "NLPB" & HC == "HCv"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = .2)) +
+  geom_point(data = corr.dt[METHOD == "NLPB" & HC == "HCv"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "NLPB" & HC == "HCv"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = .2)) +
+  geom_text(data = corr.dt[METHOD == "NLPB" & HC == "HCv"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = -.03, hjust = "right") +
+  geom_errorbar(data = corr.dt[METHOD == "NLPB" & HC == "HVR"],
+                aes(ymin = CIlow, ymax = CIhigh), width = 0.2,
+                position = position_nudge(x = -.2)) +
+  geom_point(data = corr.dt[METHOD == "NLPB" & HC == "HVR"],
+             shape = 21, fill = "white", size = 1.5, stroke = .5,
+             position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "NLPB" & HC == "HVR"],
+            aes(label = SIGN, y = CIhigh), size = 3, vjust = .1,
+            position = position_nudge(x = -.2)) +
+  geom_text(data = corr.dt[METHOD == "NLPB" & HC == "HVR"],
+            aes(label = round(R, 2)),
+            size = 3, nudge_x = .03, hjust = "left") +
+  geom_signif(data = corr.perm.sign.dt[METHOD == "NLPB"],
+              aes(xmin = HCv, xmax = HVR, annotations = LABEL,
+                  y_position = Y + .13), manual = TRUE, colour = cbPalette[1],
+              textsize = 3, inherit.aes = FALSE) +
+  scale_colour_manual(values = cbPalette[2:3]) +
+  ylim(-.6, .5) +
+  labs(title = "NLPB", x = "HC measure", y = "Pearsons' r",
        caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
 
-here("plots/adni-bl_hcv-hvr_corrs_malf.png") |>
-  ggsave(width = 4, height = 7, units = "in", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_nlpb.png") |>
+  #ggsave(width = 4, height = 7, units = "in", dpi = 600)
 
-here("plots/adni-bl_hcv-hvr_corrs_malf.tiff") |>
-  ggsave(width = 4, height = 7, units = "in",
-           device = "tiff", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_nlpb.tiff") |>
+  #ggsave(width = 4, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
 
+p <- grid.arrange(p1, p2, p3, p4, nrow = 2)
+here("plots/adni-bl_hcv-hvr_corrs.png") |>
+  ggsave(p, width = 9, height = 9, units = "in", dpi = 600)
 
-## Permutation tests
-# Age
-plot.dt <- corr.dif.dt[perms.dif.dt[COVAR == "AGE" & METHOD != "CNN-FS_V6"],
-                       on = .(DX, COVAR, METHOD)]
-plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
+here("plots/adni-bl_hcv-hvr_corrs.tiff") |>
+  ggsave(p, width = 9, height = 9, units = "in", device = "tiff", dpi = 600)
 
-ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
-  theme_linedraw(base_size = 12) +
-  theme(text = element_text(size = 12), axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) +
-  facet_grid(rows = vars(DX), cols = vars(COMP), scales = "free_y") +
-  stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE,
-                      quantiles = 0.05, scale = 1, alpha = .3) +
-  geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
-  scale_fill_manual(values = cbPalette[2:1], name = "One-sided\nhypothesis",
-                    labels = c("lower 5%", "upper 95%")) +
-  geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
-                aes(label = paste0("<i>p</i> = ", Pval)),
-                inherit.aes = F, colour = "Black", fill = "White",
-                size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
-  labs(title = "Permutation tests: Difference in correlation with Age",
-       x = "Difference in r", y = NULL)
+### Permutation tests
+## Age
+#plot.dt <- corr.dif.dt[perms.dif.dt[COVAR == "AGE" & METHOD != "CNN-FS_V6"],
+                       #on = .(DX, COVAR, METHOD)]
+#plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_age.png") |>
-  ggsave(width = 13, height = 7, units = "in", dpi = 600)
+#ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
+  #theme_classic(base_size = 12) +
+  #theme(text = element_text(size = 12), axis.text.y = element_blank(),
+        #axis.ticks.y = element_blank()) +
+  #facet_grid(rows = vars(DX), cols = vars(COMP), scales = "free_y") +
+  #stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE,
+                      #quantiles = 0.05, scale = 1, alpha = .3) +
+  #geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
+  #scale_fill_manual(values = cbPalette[2:1], name = "One-sided\nhypothesis",
+                    #labels = c("lower 5%", "upper 95%")) +
+  #geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
+                #aes(label = paste0("<i>p</i> = ", Pval)),
+                #inherit.aes = F, colour = "Black", fill = "White",
+                #size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
+  #labs(title = "Permutation tests: Difference in correlation with Age",
+       #x = "Difference in r", y = NULL)
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_age.tiff") |>
-  ggsave(width = 13, height = 7, units = "in",
-           device = "tiff", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_perms_age.png") |>
+  #ggsave(width = 13, height = 7, units = "in", dpi = 600)
 
-# Memory (RAVLT_learning)
-# Correlation is in opposite direction
-plot.dt <- corr.dif.dt[perms.dif.dt[COVAR == "RAVLT_learning" & METHOD != "CNN-FS_V6"],
-                       on = .(DX, COVAR, METHOD)]
-plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
+#here("plots/adni-bl_hcv-hvr_corrs_perms_age.tiff") |>
+  #ggsave(width = 13, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
 
-ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
-  theme_linedraw(base_size = 12) +
-  theme(text = element_text(size = 12), axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) +
-  facet_grid(rows = vars(DX), cols = vars(COMP), scales = "free_y") +
-  stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE,
-                      quantiles = 0.95, scale = 1, alpha = .3) +
-  geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
-  scale_fill_manual(values = cbPalette[1:2], name = "One-sided\nhypothesis",
-                    labels = c("lower 95%", "upper 5%")) +
-  geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
-                aes(label = paste0("<i>p</i> = ", Pval)),
-                inherit.aes = F, colour = "Black", fill = "White",
-                size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
-  labs(title = "Permutation tests: Difference in correlation with Memory",
-       x = "Difference in r", y = NULL)
+## Memory (RAVLT_learning)
+## Correlation is in opposite direction
+#plot.dt <- corr.dif.dt[perms.dif.dt[COVAR == "RAVLT_learning" & METHOD != "CNN-FS_V6"],
+                       #on = .(DX, COVAR, METHOD)]
+#plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_mem.png") |>
-  ggsave(width = 13, height = 7, units = "in", dpi = 600)
+#ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
+  #theme_classic(base_size = 12) +
+  #theme(text = element_text(size = 12), axis.text.y = element_blank(),
+        #axis.ticks.y = element_blank()) +
+  #facet_grid(rows = vars(DX), cols = vars(COMP), scales = "free_y") +
+  #stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE,
+                      #quantiles = 0.95, scale = 1, alpha = .3) +
+  #geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
+  #scale_fill_manual(values = cbPalette[1:2], name = "One-sided\nhypothesis",
+                    #labels = c("lower 95%", "upper 5%")) +
+  #geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
+                #aes(label = paste0("<i>p</i> = ", Pval)),
+                #inherit.aes = F, colour = "Black", fill = "White",
+                #size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
+  #labs(title = "Permutation tests: Difference in correlation with Memory",
+       #x = "Difference in r", y = NULL)
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_mem.tiff") |>
-  ggsave(width = 13, height = 7, units = "in",
-           device = "tiff", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_perms_mem.png") |>
+  #ggsave(width = 13, height = 7, units = "in", dpi = 600)
 
-# Cognition
-plot.dt <- corr.dif.dt[perms.dif.dt[COVAR == "ADAS13" & METHOD != "CNN-FS_V6"],
-                       on = .(DX, COVAR, METHOD)]
-plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
+#here("plots/adni-bl_hcv-hvr_corrs_perms_mem.tiff") |>
+  #ggsave(width = 13, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
 
-ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
-  theme_linedraw(base_size = 12) +
-  theme(text = element_text(size = 12), axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) +
-  facet_grid(rows = vars(DX), cols = vars(COMP), scales = "free_y") +
-  stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE,
-                      quantiles = 0.05, scale = 1, alpha = .3) +
-  geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
-  scale_fill_manual(values = cbPalette[2:1], name = "One-sided\nhypothesis",
-                    labels = c("lower 5%", "upper 95%")) +
-  geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
-                aes(label = paste0("<i>p</i> = ", Pval)),
-                inherit.aes = F, colour = "Black", fill = "White",
-                size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
-  labs(title = "Permutation tests: Difference in correlation with Cognition",
-       x = "Difference in r", y = NULL)
+## Cognition
+#plot.dt <- corr.dif.dt[perms.dif.dt[COVAR == "ADAS13" & METHOD != "CNN-FS_V6"],
+                       #on = .(DX, COVAR, METHOD)]
+#plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_cog.png") |>
-  ggsave(width = 13, height = 7, units = "in", dpi = 600)
+#ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
+  #theme_classic(base_size = 12) +
+  #theme(text = element_text(size = 12), axis.text.y = element_blank(),
+        #axis.ticks.y = element_blank()) +
+  #facet_grid(rows = vars(DX), cols = vars(COMP), scales = "free_y") +
+  #stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE,
+                      #quantiles = 0.05, scale = 1, alpha = .3) +
+  #geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
+  #scale_fill_manual(values = cbPalette[2:1], name = "One-sided\nhypothesis",
+                    #labels = c("lower 5%", "upper 95%")) +
+  #geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
+                #aes(label = paste0("<i>p</i> = ", Pval)),
+                #inherit.aes = F, colour = "Black", fill = "White",
+                #size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
+  #labs(title = "Permutation tests: Difference in correlation with Cognition",
+       #x = "Difference in r", y = NULL)
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_cog.tiff") |>
-  ggsave(width = 13, height = 7, units = "in",
-           device = "tiff", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_perms_cog.png") |>
+  #ggsave(width = 13, height = 7, units = "in", dpi = 600)
 
-# HVR: CNN - FS6
-# Correlation is in opposite direction
-plot.dt <- corr.dif.dt[perms.dif.dt[METHOD == "CNN-FS_V6"],
-                       on = .(DX, COVAR, METHOD)]
-plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
+#here("plots/adni-bl_hcv-hvr_corrs_perms_cog.tiff") |>
+  #ggsave(width = 13, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
 
-ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
-  theme_linedraw(base_size = 12) +
-  theme(text = element_text(size = 12), axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) +
-  facet_grid(rows = vars(DX), cols = vars(COVAR), scales = "free_y") +
-  stat_density_ridges(data = plot.dt[COVAR == "RAVLT_learning"],
-                      geom = "density_ridges_gradient", calc_ecdf = TRUE,
-                      quantiles = 0.95, scale = 1, alpha = .3) +
-  stat_density_ridges(data = plot.dt[COVAR != "RAVLT_learning"],
-                      geom = "density_ridges_gradient", calc_ecdf = TRUE,
-                      quantiles = 0.95, scale = 1, alpha = .3) +
-  geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
-  scale_fill_manual(values = cbPalette[1:2], name = "One-sided\nhypothesis",
-                    labels = c("lower 95%", "upper 5%")) +
-  geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
-                aes(label = paste0("<i>p</i> = ", Pval)),
-                inherit.aes = F, colour = "Black", fill = "White",
-                size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
-  labs(title = "Permutation tests: Difference in correlation with Memory",
-       x = "Difference in r", y = NULL)
+## HVR: CNN - FS6
+## Correlation is in opposite direction
+#plot.dt <- corr.dif.dt[perms.dif.dt[METHOD == "CNN-FS_V6"],
+                       #on = .(DX, COVAR, METHOD)]
+#plot.dt <- corr.perm.dt[plot.dt, on = .(DX, COVAR, METHOD)]
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_mem.png") |>
-  ggsave(width = 13, height = 7, units = "in", dpi = 600)
+#ggplot(plot.dt, aes(x = DIFF_p, y = DX, fill = factor(after_stat(quantile)))) +
+  #theme_classic(base_size = 12) +
+  #theme(text = element_text(size = 12), axis.text.y = element_blank(),
+        #axis.ticks.y = element_blank()) +
+  #facet_grid(rows = vars(DX), cols = vars(COVAR), scales = "free_y") +
+  #stat_density_ridges(data = plot.dt[COVAR == "RAVLT_learning"],
+                      #geom = "density_ridges_gradient", calc_ecdf = TRUE,
+                      #quantiles = 0.95, scale = 1, alpha = .3) +
+  #stat_density_ridges(data = plot.dt[COVAR != "RAVLT_learning"],
+                      #geom = "density_ridges_gradient", calc_ecdf = TRUE,
+                      #quantiles = 0.95, scale = 1, alpha = .3) +
+  #geom_vline(aes(xintercept = DIFF), colour = cbPalette[3]) +
+  #scale_fill_manual(values = cbPalette[1:2], name = "One-sided\nhypothesis",
+                    #labels = c("lower 95%", "upper 5%")) +
+  #geom_richtext(data = unique(plot.dt[, .(DX, COMP, Pval)]),
+                #aes(label = paste0("<i>p</i> = ", Pval)),
+                #inherit.aes = F, colour = "Black", fill = "White",
+                #size = 2.5, x = 0, y = -Inf, vjust = -0.25) +
+  #labs(title = "Permutation tests: Difference in correlation with Memory",
+       #x = "Difference in r", y = NULL)
 
-here("plots/adni-bl_hcv-hvr_corrs_perms_mem.tiff") |>
-  ggsave(width = 13, height = 7, units = "in",
-           device = "tiff", dpi = 600)
+#here("plots/adni-bl_hcv-hvr_corrs_perms_mem.png") |>
+  #ggsave(width = 13, height = 7, units = "in", dpi = 600)
+
+#here("plots/adni-bl_hcv-hvr_corrs_perms_mem.tiff") |>
+  #ggsave(width = 13, height = 7, units = "in",
+           #device = "tiff", dpi = 600)
 

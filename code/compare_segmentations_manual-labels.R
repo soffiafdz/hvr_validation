@@ -8,8 +8,6 @@ library(ggplot2)
 library(ggrepel)
 library(ggpubr)
 library(glue)
-#suppressPackageStartupMessages(library(Hmisc))
-#suppressPackageStartupMessages(library(gridExtra))
 
 ### Read KAPPA DTs (rds) and data cleaning
 
@@ -120,17 +118,6 @@ scores[, `:=`(roi = str_to_upper(roi),
               #portion = str_to_title(portion),
               method = str_to_upper(method))]
 
-#scores[, roi2 := paste(roi, portion, sep = "_")]
-
-#scores[, `:=`(roi = factor(roi, levels = c("HC", "CSF", "AG")),
-              #roi2 = factor(roi2,
-                            #levels = c("HC_Head", "HC_Body", "HC_Tail",
-                                       #"CSF_Head", "CSF_Body", "CSF_Tail",
-                                       #"HC_Whole", "CSF_Whole", "AG_Whole"),
-                            #labels = c("HC_head", "HC_body", "HC_tail",
-                                       #"CSF_head", "CSF_body", "CSF_tail",
-                                       #"HC", "CSF", "AG")))]
-
 scores[, roi := factor(roi, levels = c("HC", "CSF"))]
 
 scores[, `:=`(mean = mean(kappa),
@@ -145,29 +132,24 @@ f_plot1  <- here("plots/manual-labels_segm-dice_hcvc")
 fp1_png  <- paste0(f_plot1, ".png")
 fp1_tiff <- paste0(f_plot1, ".tiff")
 if(!file.exists(fp1_png) || !file.exists(fp1_tiff)) {
-#if(TRUE) {
   ggplot(scores, aes(x = method, y = kappa)) +
-    theme_linedraw(base_size = 12) +
+    theme_classic(base_size = 12) +
     theme(
        text = element_text(size = 12),
        axis.text.y = element_text(size = 10),
        axis.text.x = element_text(size = 10, angle = 90,
                                   hjust = 0.95, vjust = 0.2)) +
-    geom_jitter(height = 0, width = .05, shape = 21, size = .4) +
-    geom_violin(trim = FALSE, alpha = .1) +
-    stat_summary(fun.data = "median_hilow",
-                 geom = "pointrange",
-                 alpha = 0.7, colour = "red", size = 0.075) +
+    #geom_jitter(height = 0, width = .05, shape = 21, size = .4) +
+    geom_violin(trim = FALSE, linewidth = 0.3) +
+    stat_summary(fun.data = "median_hilow", geom = "pointrange",
+                 colour = "darkred", size = 0.01, linewidth = 0.2) +
     geom_label_repel(data = scores[order(kappa), .SD[.N/2], .(method, roi, side)],
                      aes(y = kappa,
-                         label = glue("{round(mean, 3)}\n({round(sd, 3)})")),
-                     alpha = 0.7, size = 2.5) +
+                         label = glue("{round(mean, 2)}\n({round(sd, 2)})")),
+                     size = 3, box.padding = 1.5, alpha = 0.75) +
     facet_grid(factor(roi, levels = c("HC", "CSF")) ~ side,
                scales = "free") +
-    ylab('Overlap Kappa') +
-    xlab('Segmentation Method') +
-    #ylim(0.4,1.0) +
-    ggtitle("Automatic segmentation: HC and CSF")
+    labs(y = "Overlap Kappa", x = "Segmentation Method")
 
   if(!file.exists(fp1_png)){
     ggsave(fp1_png, width = 5, height = 5, units = "in", dpi = 600)
@@ -178,36 +160,6 @@ if(!file.exists(fp1_png) || !file.exists(fp1_tiff)) {
            device = "tiff", dpi = 600)
   }
 }
-
-### Boxplot Kappas HCVC+AG:
-#f_plot2 <- here("plots/manual-labels_segm-dice_hcvc-ag.png")
-#if(!file.exists(f_plot2)) {
-  #ggplot(scores[!roi2 %in% c("CSF", "HC")], aes(x = method, y = dice)) +
-      #theme_linedraw(base_size = 24) +
-      #theme(
-         #text = element_text(size = 24),
-         #axis.text.y = element_text(size = 20),
-         #axis.text.x = element_text(size = 20, angle = 90,
-                                    #hjust = 0.95, vjust = 0.2)) +
-      #geom_jitter(height = 0, width = .05, shape = 21, size = .5) +
-      #geom_violin(trim = FALSE, alpha = .1) +
-      #stat_summary(fun.data = "median_hilow",
-                   #geom = "pointrange",
-                   #alpha = 0.7, colour = "red") +
-      #geom_label_repel(data = scores[!roi2 %in% c("CSF", "HC"),
-                                     #.SD[.N/2], .(method, roi2, side)],
-                       #aes(y = dice,
-                           #label = glue("{round(mean, 3)} ({round(sd, 3)})")),
-                       #alpha = 0.7, size = 4) +
-      #facet_grid(side ~ roi2, scales = "free") +
-      #ylab('Overlap Kappa') +
-      #xlab('Segmentation Method') +
-      ##ylim(0.4,1.0) +
-      #ggtitle("Automatic segmentation: AG and subportions of HC and CSF")
-
-  #ggsave(f_plot2, width = 30, height = 10, units = "in", dpi = "retina")
-#}
-
 
 ## Volumes Correlation
 # Read Volume CSVs
@@ -258,12 +210,11 @@ f_plot3  <- here("plots/manual-labels_segm-corr_hcvc")
 fp3_png  <- paste0(f_plot3, ".png")
 fp3_tiff <- paste0(f_plot3, ".tiff")
 if(!file.exists(fp3_png) || !file.exists(fp3_tiff)) {
-#if(TRUE) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   ggplot(vols, aes(x = VOLUME, y = MANUAL, colour = SEGMENTATION)) +
-    theme_linedraw(base_size = 12) +
+    theme_classic(base_size = 12) +
     theme(text = element_text(size = 12), legend.position = "bottom") +
     geom_point(size = 2, shape = 21) +
     geom_abline(intercept = 0, slope = 1,
@@ -273,8 +224,7 @@ if(!file.exists(fp3_png) || !file.exists(fp3_tiff)) {
              hjust = "inward") +
     facet_grid(rows = vars(ROI), cols = vars(SIDE), scales = "free") +
     scale_colour_manual(values = cbPalette[-1]) +
-    labs(title = "Scatter plots: manual vs computed volumes",
-         x = "Computed volume", y = "Manual volume",
+    labs(x = "Computed volume", y = "Manual volume",
          colour = "Segmentation method")
 
   if(!file.exists(fp3_png)){
@@ -301,36 +251,44 @@ f_plot4  <- here("plots/manual-labels_segm-bland-altman_hcvc")
 fp4_png  <- paste0(f_plot4, ".png")
 fp4_tiff <- paste0(f_plot4, ".tiff")
 if(!file.exists(fp4_png) || !file.exists(fp4_tiff)) {
-#if(TRUE) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   ggplot(vols, aes(x = AVG, y = DIFF)) +
-    theme_linedraw(base_size = 12) +
+    theme_classic(base_size = 12) +
     theme(text = element_text(size = 12), legend.position = "bottom") +
     geom_point(shape = 21, colour = cbPalette[1]) +
     geom_smooth(method = "lm", alpha = .1, colour = cbPalette[3]) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = MEAN_DIFF),
                colour = cbPalette[2], linetype = "dashed", alpha = .7) +
-    geom_text(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
-               aes(x = Inf, y = MEAN_DIFF, label = round(MEAN_DIFF, 3)),
-               hjust = "inward", nudge_y = 70, size = 2) +
+    geom_text(data = vols[ROI == "HC", .SD[1], SEGMENTATION],
+              aes(x = 1200, y = MEAN_DIFF, label = round(MEAN_DIFF, 2)),
+              size = 2.5) +
+    geom_text(data = vols[ROI == "CSF", .SD[1], SEGMENTATION],
+              aes(x = 5500, y = MEAN_DIFF, label = round(MEAN_DIFF, 2)),
+              size = 2.5) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = LOW_CI),
                colour = cbPalette[2], linetype = "dashed", alpha = .7) +
-    geom_text(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
-               aes(x = Inf, y = LOW_CI, label = round(LOW_CI, 3)),
-               hjust = "inward", nudge_y = 70, size = 2) +
+    geom_text(data = vols[ROI == "HC", .SD[1], SEGMENTATION],
+              aes(x = 1200, y = LOW_CI, label = round(LOW_CI, 2)),
+              size = 2.5) +
+    geom_text(data = vols[ROI == "CSF", .SD[1], SEGMENTATION],
+              aes(x = 5500, y = LOW_CI, label = round(LOW_CI, 2)),
+              size = 2.5) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = HI_CI),
                colour = cbPalette[2], linetype = "dashed", alpha = .7) +
-    geom_text(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
-               aes(x = Inf, y = HI_CI, label = round(HI_CI, 3)),
-               hjust = "inward", nudge_y = 70, size = 2) +
+    geom_text(data = vols[ROI == "HC", .SD[1], SEGMENTATION],
+              aes(x = 1200, y = HI_CI, label = round(HI_CI, 2)),
+              size = 2.5) +
+    geom_text(data = vols[ROI == "CSF", .SD[1], SEGMENTATION],
+              aes(x = 5500, y = HI_CI, label = round(HI_CI, 2)),
+              size = 2.5) +
+    xlim(950, 6200) +
     facet_grid(rows = vars(ROI), cols = vars(SEGMENTATION), scales = "free") +
-    labs(title = "Bland-Altman plots",
-         x = "Mean manual and computed volumes",
+    labs(x = "Mean manual and computed volumes",
          y = "Manual - computed volumes")
 
   if(!file.exists(fp4_png)){
