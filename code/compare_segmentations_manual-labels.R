@@ -1,5 +1,6 @@
 #!/usr/env/bin Rscript
 
+library(WRS2)
 library(here)
 library(readr)
 library(stringr)
@@ -127,6 +128,26 @@ scores[, `:=`(mean = mean(kappa),
 
 setorder(scores, kappa)
 
+## Kruskal-wallis
+scores[, kruskal.test(kappa ~ method), .(roi, side)]
+
+## Two-way anova with trimmed means
+scores_f <- copy(scores)
+scores_f[, method_f := factor(method)]
+scores_f[, side_f := factor(side)]
+
+## HC
+t2way(kappa ~ method_f * side_f, scores_f[roi == "HC"])
+post_hoc <- mcp2atm(kappa ~ method_f * side_f, scores_f[roi == "HC"])
+post_hoc$contrasts
+post_hoc
+
+## CSF
+t2way(kappa ~ method_f * side_f, scores_f[roi == "CSF"])
+post_hoc <- mcp2atm(kappa ~ method_f * side_f, scores_f[roi == "CSF"])
+post_hoc$contrasts
+post_hoc
+
 ### Boxplot Kappas HCVC
 f_plot1  <- here("plots/manual-labels_segm-dice_hcvc")
 fp1_png  <- paste0(f_plot1, ".png")
@@ -183,13 +204,15 @@ vols[, ID := str_extract(ID, "\\d{3}")]
 vols    <- melt(vols[, .(ID, METHOD, LHC, LCSF, RHC, RCSF)],
                 measure.vars = patterns("(HC|CSF)$"),
                 value.name = "VOL",
-                variable.name = "ROI")
+                variable.name = "ROI",
+                variable.factor = FALSE)
 
 vols[, SIDE := factor(str_extract(ROI, "L|R"),
                       levels = c("L", "R"),
                       labels = c("Left", "Right"))]
 vols[ROI %like% "HC", ROI := "HC"]
 vols[ROI %like% "CSF", ROI := "CSF"]
+vols[, ROI := factor(ROI, levels = c("HC", "CSF"))]
 
 manual  <- vols[METHOD == "manual"]
 segs    <- dcast(vols[METHOD != "manual"], ... ~ METHOD, value.var = "VOL")
@@ -206,6 +229,9 @@ vols[, SEGMENTATION := factor(SEGMENTATION,
                               levels = c("cnn", "malf", "nlpb"),
                               labels = c("CNN", "MALF", "NLPB"))]
 
+vols[, MANUAL := MANUAL / 1000]
+vols[, VOLUME := VOLUME / 1000]
+
 f_plot3  <- here("plots/manual-labels_segm-corr_hcvc")
 fp3_png  <- paste0(f_plot3, ".png")
 fp3_tiff <- paste0(f_plot3, ".tiff")
@@ -221,7 +247,7 @@ if(!file.exists(fp3_png) || !file.exists(fp3_tiff)) {
                 colour = cbPalette[1], linetype = "dashed") +
     geom_smooth(method = "lm", alpha = .2) +
     stat_cor(size = 2.7, label.x.npc = "right", label.y.npc = "bottom",
-             hjust = "inward") +
+             hjust = "inward", method = "spearman") +
     facet_grid(rows = vars(ROI), cols = vars(SIDE), scales = "free") +
     scale_colour_manual(values = cbPalette[-1]) +
     labs(x = "Computed volume", y = "Manual volume",
@@ -239,7 +265,7 @@ if(!file.exists(fp3_png) || !file.exists(fp3_tiff)) {
 
 # Bland-Altman plot
 vols[, `:=`(AVG = (MANUAL + VOLUME) / 2,
-            DIFF = MANUAL - VOLUME)]
+            DIFF = VOLUME - MANUAL)]
 vols[, `:=`(MEAN_DIFF = mean(DIFF),
             LOW_CI = mean(DIFF) - 1.96 * sd(DIFF),
             HI_CI = mean(DIFF) + 1.96 * sd(DIFF)),
@@ -258,38 +284,38 @@ if(!file.exists(fp4_png) || !file.exists(fp4_tiff)) {
     theme_classic(base_size = 12) +
     theme(text = element_text(size = 12), legend.position = "bottom") +
     geom_point(shape = 21, colour = cbPalette[1]) +
-    geom_smooth(method = "lm", alpha = .1, colour = cbPalette[3]) +
+    #geom_smooth(method = "lm", alpha = .1, colour = cbPalette[3]) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = MEAN_DIFF),
                colour = cbPalette[2], linetype = "dashed", alpha = .7) +
     geom_text(data = vols[ROI == "HC", .SD[1], SEGMENTATION],
-              aes(x = 1200, y = MEAN_DIFF, label = round(MEAN_DIFF, 2)),
+              aes(x = 1.2, y = MEAN_DIFF, label = round(MEAN_DIFF, 2)),
               size = 2.5) +
     geom_text(data = vols[ROI == "CSF", .SD[1], SEGMENTATION],
-              aes(x = 5500, y = MEAN_DIFF, label = round(MEAN_DIFF, 2)),
+              aes(x = 5.5, y = MEAN_DIFF, label = round(MEAN_DIFF, 2)),
               size = 2.5) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = LOW_CI),
-               colour = cbPalette[2], linetype = "dashed", alpha = .7) +
+               colour = cbPalette[3], linetype = "dashed", alpha = .7) +
     geom_text(data = vols[ROI == "HC", .SD[1], SEGMENTATION],
-              aes(x = 1200, y = LOW_CI, label = round(LOW_CI, 2)),
-              size = 2.5) +
+              aes(x = 1.2, y = LOW_CI, label = round(LOW_CI, 2)),
+              nudge_y = -.100, size = 2.5) +
     geom_text(data = vols[ROI == "CSF", .SD[1], SEGMENTATION],
-              aes(x = 5500, y = LOW_CI, label = round(LOW_CI, 2)),
-              size = 2.5) +
+              aes(x = 5.5, y = LOW_CI, label = round(LOW_CI, 2)),
+              nudge_y = -.15, size = 2.5) +
     geom_hline(data = vols[, .SD[1], .(ROI, SEGMENTATION)],
                aes(yintercept = HI_CI),
-               colour = cbPalette[2], linetype = "dashed", alpha = .7) +
+               colour = cbPalette[3], linetype = "dashed", alpha = .7) +
     geom_text(data = vols[ROI == "HC", .SD[1], SEGMENTATION],
-              aes(x = 1200, y = HI_CI, label = round(HI_CI, 2)),
-              size = 2.5) +
+              aes(x = 1.2, y = HI_CI, label = round(HI_CI, 2)),
+              nudge_y = .1, size = 2.5) +
     geom_text(data = vols[ROI == "CSF", .SD[1], SEGMENTATION],
-              aes(x = 5500, y = HI_CI, label = round(HI_CI, 2)),
-              size = 2.5) +
-    xlim(950, 6200) +
+              aes(x = 5.5, y = HI_CI, label = round(HI_CI, 2)),
+              nudge_y = .15, size = 2.5) +
+    xlim(.95, 6.2) +
     facet_grid(rows = vars(ROI), cols = vars(SEGMENTATION), scales = "free") +
-    labs(x = "Mean manual and computed volumes",
-         y = "Manual - computed volumes")
+    labs(x = "Mean computed and manual volumes",
+         y = "Computed - manual volumes")
 
   if(!file.exists(fp4_png)){
     ggsave(fp4_png, width = 10, height = 5, units = "in", dpi = 600)

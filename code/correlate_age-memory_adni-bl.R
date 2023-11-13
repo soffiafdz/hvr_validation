@@ -4,6 +4,7 @@ library(here)
 library(readr)
 library(data.table)
 library(progress)
+library(DescTools)
 library(ggplot2)
 library(ggridges)
 library(ggsignif)
@@ -22,9 +23,14 @@ volumes       <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds") |>
 DT            <- volumes[adnimerge, on = "PTID",
                          .(PTID, METHOD, DX, AGE, ADAS13,
                            #RAVLT_immediate, RAVLT_learning, RAVLT_forgetting,
+                           RAVLT_immediate = as.numeric(RAVLT_immediate),
+                           RAVLT_perc_forgetting = as.numeric(RAVLT_perc_forgetting),
                            RAVLT_learning = as.numeric(RAVLT_learning),
                            #HC = HC_mean,     # Native space
+                           HCv_l = HC_stx_l,
+                           HCv_r = HC_stx_r,
                            HCv = HC_stx_mean, # Head-size normalized
+                           HVR_l, HVR_r,
                            HVR = HVR_mean)
                          ][DX != ""       &
                            !is.na(HVR)    &
@@ -34,8 +40,8 @@ DT            <- volumes[adnimerge, on = "PTID",
 
 
 ## Correlation | Permutation tests
-f1 <- here("data/rds/adni-bl_hcv-hvr_corrs_2.rds")
-f2 <- here("data/rds/adni-bl_hcv-hvr_corrs_permutations_2.rds")
+f1 <- here("data/rds/adni-bl_hcv-hvr_corrs_non-parametric.rds")
+f2 <- here("data/rds/adni-bl_hcv-hvr_corrs_permutations_non-parametric.rds")
 if (file.exists(f1) & file.exists(f2)) {
   corr.dt       <- read_rds(f1)
   perms.dif.dt  <- read_rds(f2)
@@ -75,20 +81,24 @@ if (file.exists(f1) & file.exists(f2)) {
 
         for (msr in msrs) {
           i <- i + 1
-          corr    <- longDT[COVAR == cov & MEASURE == msr, cor.test(VAL1, VAL2)]
+          corr    <- longDT[COVAR == cov & MEASURE == msr,
+                            cor.test(VAL1, VAL2, method = "spearman")]
+          conf    <- longDT[COVAR == cov & MEASURE == msr,
+                            SpearmanRho(VAL1, VAL2, conf.level = 0.95)]
           r[i]    <- corr$estimate
           t[i]    <- corr$statistic
-          dfs[i]  <- corr$parameter
           pval[i] <- corr$p.value
-          cil[i]  <- corr$conf.int[1]
-          cih[i]  <- corr$conf.int[2]
+          cil[i]  <- conf[2]
+          cih[i]  <- conf[3]
         }
 
         for (p in 1:n_perms) {
           pb$tick(tokens = list(what = paste(dx, mtd, sep = ":")))
           longDT[, SHUFFLE := sample(MEASURE)]
-          cor.1   <- longDT[COVAR == cov & SHUFFLE == "HVR", cor(VAL1, VAL2)]
-          cor.2   <- longDT[COVAR == cov & SHUFFLE == "HCv", cor(VAL1, VAL2)]
+          cor.1   <- longDT[COVAR == cov & SHUFFLE == "HVR",
+                            cor(VAL1, VAL2, method = "spearman")]
+          cor.2   <- longDT[COVAR == cov & SHUFFLE == "HCv",
+                            cor(VAL1, VAL2, method = "spearman")]
           cor.difs1[p + j * n_perms] <- cor.1 - cor.2
         }
         j <- j + 1 # Increase counter
@@ -103,8 +113,10 @@ if (file.exists(f1) & file.exists(f2)) {
       for (p in 1:n_perms) {
         pb$tick(tokens = list(what = paste(dx, "CNN vs FS", sep = ":")))
         longDT[, SHUFFLE := sample(METHOD)]
-        cor.1   <- longDT[COVAR == cov & SHUFFLE == "cnn", cor(HVR, VAL2)]
-        cor.2   <- longDT[COVAR == cov & SHUFFLE == "fs6", cor(HVR, VAL2)]
+        cor.1   <- longDT[COVAR == cov & SHUFFLE == "cnn",
+                          cor(HVR, VAL2, method = "spearman")]
+        cor.2   <- longDT[COVAR == cov & SHUFFLE == "fs6",
+                          cor(HVR, VAL2, method = "spearman")]
         cor.difs2[p + k * n_perms] <- cor.1 - cor.2
       }
       k <- k + 1
@@ -248,7 +260,7 @@ p1  <- ggplot(corr.dt[METHOD == "FS_V6"], aes(HC, R, colour = HC)) +
             size = 3, nudge_x = .03, hjust = "left") +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .5) +
-  labs(title = "FS_V6", x = "HC measure", y = "Pearsons' r",
+  labs(title = "FS_V6", x = "HC measure", y = "Spearman's rho",
        caption = "")
 
 #here("plots/adni-bl_hcv-hvr_corrs_fs6.png") |>
@@ -295,7 +307,7 @@ p2  <- ggplot(corr.dt[METHOD == "CNN"], aes(HC, R, colour = HC)) +
               textsize = 3, inherit.aes = FALSE) +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .5) +
-  labs(title = "CNN", x = "HC measure", y = "Pearsons' r",
+  labs(title = "CNN", x = "HC measure", y = "Spearman's rho",
        caption = "")
 
 #here("plots/adni-bl_hcv-hvr_corrs_cnn.png") |>
@@ -342,7 +354,7 @@ p3  <- ggplot(corr.dt[METHOD == "MALF"], aes(HC, R, colour = HC)) +
               textsize = 3, inherit.aes = FALSE) +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .4) +
-  labs(title = "MALF", x = "HC measure", y = "Pearsons' r",
+  labs(title = "MALF", x = "HC measure", y = "Spearman's rho",
        caption = "")
 
 #here("plots/adni-bl_hcv-hvr_corrs_malf.png") |>
@@ -389,7 +401,7 @@ p4  <- ggplot(corr.dt[METHOD == "NLPB"], aes(HC, R, colour = HC)) +
               textsize = 3, inherit.aes = FALSE) +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .5) +
-  labs(title = "NLPB", x = "HC measure", y = "Pearsons' r",
+  labs(title = "NLPB", x = "HC measure", y = "Spearman's rho",
        caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
 
 #here("plots/adni-bl_hcv-hvr_corrs_nlpb.png") |>
@@ -528,4 +540,31 @@ here("plots/adni-bl_hcv-hvr_corrs.tiff") |>
 #here("plots/adni-bl_hcv-hvr_corrs_perms_mem.tiff") |>
   #ggsave(width = 13, height = 7, units = "in",
            #device = "tiff", dpi = 600)
+
+
+## Correlations with Memory
+DT_long <- melt(DT,
+                measure.vars = patterns("^H"),
+                variable.name = "HC_msr",
+                value.name = "VOL")
+
+mem_hc_cnn <- DT_long[METHOD == "cnn",
+                      .(DX, HC_msr, VOL, RAVLT_learning)]
+
+ggplot(mem_hc_cnn, aes(x = RAVLT_learning, y = VOL, colour = DX)) +
+  theme_classic(base_size = 12) +
+  theme(text = element_text(size = 12), legend.position = "bottom") +
+  geom_point(size = 2, shape = 21) +
+  geom_abline(intercept = 0, slope = 1,
+              colour = cbPalette[1], linetype = "dashed") +
+  geom_smooth(method = "lm", alpha = .2) +
+  stat_cor(size = 2.7, label.x.npc = "right", label.y.npc = "bottom",
+           hjust = "inward") +
+  facet_wrap(vars(HC_msr, DX), ncol = 3, scales = "free") +
+  scale_colour_manual(values = cbPalette[-1]) +
+  labs(x = "Memory", y = "Volume",
+       colour = "Clinical label")
+
+ggsave("plots/adni-bl_hcv_hvr_memory_corrs.png", width = 12, height = 24,
+       units = "in", dpi = 600)
 
