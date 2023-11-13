@@ -4,6 +4,7 @@ library(here)
 library(readr)
 library(data.table)
 library(gtsummary)
+library(dunn.test)
 
 ## Read RDS objects
 adnimerge     <- here("data/rds/adnimerge_baseline.rds") |>
@@ -74,3 +75,13 @@ demog.dt |>
   as_flex_table() |>
   flextable::save_as_docx(path = "data/derivatives/adni-bl_demog-table.docx")
 
+
+## Post-hoc analyses
+# Chi2: DX v Sex
+demog.dt[, chisq.posthoc.test::chisq.posthoc.test(table(DX, PTGENDER))]
+
+# Dunn.tests
+demog.dt[, dunn.test(AGE, DX, method = "bonferroni")]
+demog.dt[, dunn.test(PTEDUCAT, DX, method = "bonferroni")]
+demog.dt[, dunn.test(ADAS13, DX, method = "bonferroni")]
+demog.dt[, dunn.test(RAVLT_learning, DX, method = "bonferroni")]
