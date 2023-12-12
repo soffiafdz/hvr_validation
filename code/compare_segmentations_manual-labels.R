@@ -10,6 +10,9 @@ library(ggrepel)
 library(ggpubr)
 library(glue)
 
+## Remake plots
+ReDoPlots     <- TRUE
+
 ### Read KAPPA DTs (rds) and data cleaning
 
 ## MALF
@@ -109,6 +112,19 @@ cnn[, method := "cnn"]
 # Clean memory
 rm(cnn_r)
 
+# FreeSurfer 6.0
+fs6 <- here("data/derivatives/man-seg_kappa_hcilvc_fs.csv") |> fread()
+
+# Add info
+# Side
+fs6[label %in% 1:2, side := "left"]
+fs6[label %in% 3:4, side := "right"]
+# ROI
+fs6[label %in% c(1, 3), roi := "hc"]
+# This only uses inferior lateral ventricle
+# Maybe discard
+fs6[label %in% c(2, 4), roi := "csf"]
+
 ### Merge all three
 scores <- rbindlist(list(malf, nlpb, cnn), use.names = TRUE, fill = TRUE)
 
@@ -152,7 +168,7 @@ post_hoc
 f_plot1  <- here("plots/manual-labels_segm-dice_hcvc")
 fp1_png  <- paste0(f_plot1, ".png")
 fp1_tiff <- paste0(f_plot1, ".tiff")
-if(!file.exists(fp1_png) || !file.exists(fp1_tiff)) {
+if(!file.exists(fp1_png) || !file.exists(fp1_tiff) || ReDoPlots) {
   ggplot(scores, aes(x = method, y = kappa)) +
     theme_classic(base_size = 12) +
     theme(
@@ -172,11 +188,11 @@ if(!file.exists(fp1_png) || !file.exists(fp1_tiff)) {
                scales = "free") +
     labs(y = "Overlap Kappa", x = "Segmentation Method")
 
-  if(!file.exists(fp1_png)){
+  if(!file.exists(fp1_png) || ReDoPlots){
     ggsave(fp1_png, width = 5, height = 5, units = "in", dpi = 600)
   }
 
-  if(!file.exists(fp1_tiff)){
+  if(!file.exists(fp1_tiff) || ReDoPlots){
     ggsave(fp1_tiff, width = 5, height = 5, units = "in",
            device = "tiff", dpi = 600)
   }
@@ -235,7 +251,7 @@ vols[, VOLUME := VOLUME / 1000]
 f_plot3  <- here("plots/manual-labels_segm-corr_hcvc")
 fp3_png  <- paste0(f_plot3, ".png")
 fp3_tiff <- paste0(f_plot3, ".tiff")
-if(!file.exists(fp3_png) || !file.exists(fp3_tiff)) {
+if(!file.exists(fp3_png) || !file.exists(fp3_tiff) || ReDoPlots) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -249,15 +265,15 @@ if(!file.exists(fp3_png) || !file.exists(fp3_tiff)) {
     stat_cor(size = 2.7, label.x.npc = "right", label.y.npc = "bottom",
              hjust = "inward", method = "spearman") +
     facet_grid(rows = vars(ROI), cols = vars(SIDE), scales = "free") +
-    scale_colour_manual(values = cbPalette[-1]) +
+    scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
     labs(x = "Computed volume", y = "Manual volume",
          colour = "Segmentation method")
 
-  if(!file.exists(fp3_png)){
+  if(!file.exists(fp3_png) || ReDoPlots){
     ggsave(fp3_png, width = 8, height = 5, units = "in", dpi = 600)
   }
 
-  if(!file.exists(fp3_tiff)){
+  if(!file.exists(fp3_tiff) || ReDoPlots){
     ggsave(fp3_tiff, width = 8, height = 5, units = "in",
            device = "tiff", dpi = 600)
   }
@@ -276,7 +292,7 @@ vols[, `:=`(MEAN_DIFF = mean(DIFF),
 f_plot4  <- here("plots/manual-labels_segm-bland-altman_hcvc")
 fp4_png  <- paste0(f_plot4, ".png")
 fp4_tiff <- paste0(f_plot4, ".tiff")
-if(!file.exists(fp4_png) || !file.exists(fp4_tiff)) {
+if(!file.exists(fp4_png) || !file.exists(fp4_tiff) || ReDoPlots) {
   # Palette
    cbPalette    <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                      "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -317,11 +333,11 @@ if(!file.exists(fp4_png) || !file.exists(fp4_tiff)) {
     labs(x = "Mean computed and manual volumes",
          y = "Computed - manual volumes")
 
-  if(!file.exists(fp4_png)){
+  if(!file.exists(fp4_png) || ReDoPlots){
     ggsave(fp4_png, width = 10, height = 5, units = "in", dpi = 600)
   }
 
-  if(!file.exists(fp4_tiff)){
+  if(!file.exists(fp4_tiff) || ReDoPlots){
     ggsave(fp4_tiff, width = 10, height = 5, units = "in",
            device = "tiff", dpi = 600)
   }
