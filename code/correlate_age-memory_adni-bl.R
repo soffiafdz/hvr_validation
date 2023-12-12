@@ -10,13 +10,14 @@ library(ggridges)
 library(ggsignif)
 library(ggtext)
 library(gridExtra)
+library(ggpubr)
 
 ## Calculate and compare correlations of HC & Age | Memory | Cognition
 ## ADNI data CN|MCI|AD
 
 # Read RDS objects
 adnimerge     <- here("data/rds/adnimerge_baseline.rds") |> read_rds()
-volumes       <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds") |>
+volumes       <- here("data/rds/adni-bl_volumes_icv-adjusted.rds") |>
                 read_rds()
 
 # Merge

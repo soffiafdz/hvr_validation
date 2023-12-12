@@ -1,5 +1,3 @@
-#!/usr/bin/env Rscript
-
 library(here)
 library(readr)
 library(data.table)
@@ -11,16 +9,26 @@ library(ggtext)
 
 ## Read RDS objects
 adnimerge   <- here("data/rds/adnimerge_baseline.rds") |> read_rds()
-seg_volumes <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds") |>
-              read_rds()
+
+f_volumes   <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds")
+if (file.exists(f_volumes)) {
+  seg_volumes <- read_rds(f_volumes)
+} else {
+  here("code/adjust_hc-hvr_adni-bl.R") |> source()
+}
+rm(f_volumes)
 
 ## Merge
 volumes     <- adnimerge[seg_volumes[METHOD == "cnn"], on = "PTID",
                          .(PTID, DX, PTGENDER, ABETA, PIB, AV45,
-                           HC_vol = (HC_l       + HC_r      ) / 2,
-                           HC_stx = (HC_stx_l   + HC_stx_r  ) / 2,
-                           HC_icv = (HC_norm_l  + HC_norm_r ) / 2,
-                           HVR    = (HVR_l      + HVR_r     ) / 2)]
+                           HC_raw   = HC_mean,
+                           HC_stx   = HC_stx_mean,
+                           HC_prop  = HC_prop_mean,
+                           HC_pcp   = HC_pcp_mean,
+                           HC_res   = HC_res_mean,
+                           HVR      = HVR_mean,
+                           HVR_pcp  = HVR_pcp_mean,
+                           HVR_res  = HVR_res_mean)]
 
 
 ## ABeta positivity:
@@ -54,9 +62,9 @@ amy_posit[, `:=`(DX         = factor(DX,
                  HC_measure = factor(HC_measure))]
 
 ## Effect sizes — sex
-f_effvals_sex   <- here("data/rds/adni-bl_effect-sizes_sex_factorial.rds")
-#if (file.exists(f_effvals_sex)) {
-if (FALSE) {
+f_effvals_sex   <- here("data/rds/adni-bl_effect-sizes_sex_factorial_ext.rds")
+if (file.exists(f_effvals_sex)) {
+#if (FALSE) {
   effvals_sex   <- read_rds(f_effvals_sex)
 } else {
   #sides         <- amy_posit[, levels(SIDE)]
@@ -115,28 +123,31 @@ if(!file.exists(fp1_png) || !file.exists(fp1_tiff)) {
                 x = -Inf, y = -Inf, hjust = -0.1, vjust = -0.1) +
                 #fill = NA, label.color = NA,
                 #label.padding = grid::unit(rep(0, 4), "pt")) +
-  facet_wrap(DX ~ factor(HC_measure, levels = c("HC_vol", "HC_icv", "HC_stx", "HVR")),
-             scales = "free") +
+  #facet_wrap(DX ~ factor(HC_measure,
+                         #levels = c("HC_raw", "HC_prop", "HC_stx",
+                                    #"HC_pcp", "HC_res", "HVR", "HVR_pcp",
+                                    #"HVR_res")),
+  facet_wrap(DX ~ HC_measure, scales = "free") +
   scale_fill_manual(values = cbPalette[-1]) +
   scale_colour_manual(values = cbPalette[-1], guide = "none") +
   labs(title = "Effect sizes of sex by Dx using HC volume (unnormalized and normalized)",
        x = "Measure", y = NULL, fill = "Sex")
 
   if(!file.exists(fp1_png)){
-    ggsave(fp1_png, width = 13, height = 7, units = "in", dpi = 600)
+    ggsave(fp1_png, width = 13, height = 13, units = "in", dpi = 600)
   }
 
   if(!file.exists(fp1_tiff)){
-    ggsave(fp1_tiff, width = 13, height = 7, units = "in",
+    ggsave(fp1_tiff, width = 13, height = 13, units = "in",
            device = "tiff", dpi = 600)
   }
   #rm(efflabs_sex, f_plot_sex)
 }
 
 ## Effect sizes — Dx by Sex
-f_effvals_dx    <- here("data/rds/adni-bl_effect-sizes_dx_glass.rds")
-#if (file.exists(f_effvals_dx)) {
-if (FALSE) {
+f_effvals_dx    <- here("data/rds/adni-bl_effect-sizes_dx_glass_ext.rds")
+if (file.exists(f_effvals_dx)) {
+#if (FALSE) {
   effvals_dx    <- read_rds(f_effvals_dx)
 } else {
   #contrasts     <- list(c("AD", "CN"), c("MCI", "CN"), c("AD", "MCI"))
@@ -192,20 +203,21 @@ if(!file.exists(fp2_png) || !file.exists(fp2_tiff)) {
              aes(xintercept = V1, colour = DX), linetype = "dashed") +
   geom_richtext(data = efflabs_dx, aes(label = LABEL), size = 5,
                 x = -Inf, y = -Inf, hjust = -0.1, vjust = -0.1) +
-  facet_wrap(~ factor(HC_measure,
-                         levels = c("HC_vol", "HC_icv", "HC_stx", "HVR")),
-             nrow = 1, scales = "free") +
+  facet_wrap(~ HC_measure, scales = "free") +
+  #facet_wrap(~ factor(HC_measure,
+                         #levels = c("HC_vol", "HC_icv", "HC_stx", "HVR")),
+             #nrow = 1, scales = "free") +
   scale_fill_manual(values = cbPalette) +
   scale_colour_manual(values = cbPalette, guide = "none") +
   labs(title = "Effect sizes of Dx using HC volume (unnormalized and normalized)",
        x = "Measure", y = NULL, fill = "Dx")
 
   if(!file.exists(fp2_png)) {
-    ggsave(fp2_png, width = 13, height = 5, units = "in", dpi = 600)
+    ggsave(fp2_png, width = 13, height = 13, units = "in", dpi = 600)
   }
 
   if(!file.exists(fp2_tiff)) {
-    ggsave(fp2_tiff, width = 13, height = 5, units = "in",
+    ggsave(fp2_tiff, width = 13, height = 13, units = "in",
            device = "tiff", dpi = 600)
   }
 }

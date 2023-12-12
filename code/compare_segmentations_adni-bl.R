@@ -12,11 +12,14 @@ library(rlang)
 library(gtsummary)
 library(dunn.test)
 
+## Remake plots
+ReDoPlots     <- TRUE
+
 ## Read RDS objects
 adnimerge     <- here("data/rds/adnimerge_baseline.rds") |>
                 read_rds()
 fs_volumes    <- here("data/rds/adni-bl_volumes_freesurfer.rds") |> read_rds()
-seg_volumes   <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds") |>
+seg_volumes   <- here("data/rds/adni-bl_volumes_icv-adjusted.rds") |>
                 read_rds()
 
 
@@ -25,7 +28,7 @@ adni          <- adnimerge[, .(PTID, PTGENDER)][fs_volumes, on = "PTID"]
 volumes       <- seg_volumes[adni,
                             on = "PTID",
                             .(PTID, METHOD, DX, PTGENDER,
-                              FS_ADNI = FS_adni * SCALEFACTOR / 2000,
+                              FS_V4_V5 = FS_ucsf * SCALEFACTOR / 2000,
                               #HC = HC_stx_l + HC_stx_r,
                               HC = HC_stx_mean,
                               HVR = HVR_mean)]
@@ -48,7 +51,7 @@ hcv.dt.long   <- hcv.dt.long[!is.na(HCV)]
 # Table
 hcv.dt[, -c("PTID", "PTGENDER")] |>
   tbl_summary(by = DX,
-              label = list(FS_ADNI ~ "FreeSurfer (v4.3 & v5.1)",
+              label = list(FS_V4_V5 ~ "FreeSurfer (v4.3 & v5.1)",
                            FS_V6 ~ "FreeSurfer (v6.0)"),
               statistic = all_continuous() ~ "{mean} ({sd})",
               missing_text = "Failures") |>
@@ -81,7 +84,7 @@ hcv.dt[, -c("PTID", "PTGENDER")] |>
 hvr.dt        <- dcast(volumes[!is.na(METHOD), -"HC"],
                        ... ~ METHOD, value.var = "HVR")
 
-hvr.dt[, FS_ADNI := NULL]
+hvr.dt[, FS_V4_V5 := NULL]
 setnames(hvr.dt,
          c("cnn", "malf", "nlpb", "fs6"),
          c("CNN", "MALF", "NLPB", "FS_V6"))
@@ -113,7 +116,7 @@ dxs   <- hcv.dt.long[, levels(DX)][-2] # Focus on CN-AD difference
 
 # Sex
 # Control by DX
-fnames <- here(paste("data/rds/adni-bl_effect-sizes_hcv_sex",
+fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hcv_sex",
                      c(".rds", "_sims.rds")))
 if (file.exists(fnames[2])) {
   effvals_hcv_sex <- read_rds(fnames[1])
@@ -153,7 +156,7 @@ if (file.exists(fnames[2])) {
 
 # CN vs AD
 # Glass' delta (CN sd only)
-fnames <- here(paste("data/rds/adni-bl_effect-sizes_hcv_dx",
+fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hcv_dx",
                      c(".rds", "_sims.rds")))
 if (file.exists(fnames[2])) {
   effvals_hcv_dx <- read_rds(fnames[1])
@@ -235,7 +238,7 @@ if (file.exists(fnames[2])) {
 
 # CN vs AD
 # Glass' delta (CN sd only)
-fnames <- here(paste("data/rds/adni-bl_effect-sizes_hvr_dx",
+fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hvr_dx",
                      c(".rds", "_sims.rds")))
 if (file.exists(fnames[2])) {
   effvals_hvr_dx <- read_rds(fnames[1])
@@ -285,8 +288,8 @@ g <- ggplot(aes(x = HCV, colour = DX), data = hcv.dt.long) +
   theme(text = element_text(size = 14), legend.position = "bottom",
         axis.text.y = element_blank(), axis.ticks.y = element_blank(),
         axis.line.y = element_blank()) +
-  scale_fill_manual(values = cbPalette[-1]) +
-  scale_colour_manual(values = cbPalette[-1]) +
+  scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
+  scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
   geom_histogram(fill = "transparent", bins = 45) +
   geom_vline(data = hcv.dt.long[, mean(HCV), .(DX, METHOD)],
              aes(xintercept = V1, colour = DX), linetype = "dashed",
@@ -299,13 +302,13 @@ g <- ggplot(aes(x = HCV, colour = DX), data = hcv.dt.long) +
 
 fnames <- here(paste("plots/adni-bl_hcv_effsizes-dx",
                      c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1])) {
+if (!file.exists(fnames[1]) || ReDoPlots) {
   png(fnames[1], width = 13, height = 5, units = "in", res = 600)
   print(g)
   dev.off()
 }
 
-if (!file.exists(fnames[2])) {
+if (!file.exists(fnames[2]) || ReDoPlots) {
   tiff(fnames[2], width = 13, height = 5, units = "in", res = 600)
   print(g)
   dev.off()
@@ -316,8 +319,8 @@ g <- ggplot(aes(x = HVR, colour = DX), data = hvr.dt.long) +
   theme(text = element_text(size = 14), legend.position = "bottom",
         axis.text.y = element_blank(), axis.ticks.y = element_blank(),
         axis.line.y = element_blank()) +
-  scale_fill_manual(values = cbPalette[-1]) +
-  scale_colour_manual(values = cbPalette[-1]) +
+  scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
+  scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
   geom_histogram(fill = "transparent", bins = 45) +
   geom_vline(data = hvr.dt.long[, mean(HVR), .(DX, METHOD)],
              aes(xintercept = V1, colour = DX), linetype = "dashed",
@@ -330,13 +333,13 @@ g <- ggplot(aes(x = HVR, colour = DX), data = hvr.dt.long) +
 
 fnames <- here(paste("plots/adni-bl_hvr_effsizes-dx",
                      c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1])) {
+if (!file.exists(fnames[1]) || ReDoPlots) {
   png(fnames[1], width = 13, height = 5, units = "in", res = 600)
   print(g)
   dev.off()
 }
 
-if (!file.exists(fnames[2])) {
+if (!file.exists(fnames[2]) || ReDoPlots) {
   tiff(fnames[2], width = 13, height = 5, units = "in", res = 600)
   print(g)
   dev.off()
@@ -356,8 +359,8 @@ g <- ggplot(aes(x = VAL, colour = DX), data = hcv_hvr.dt.long) +
   theme(text = element_text(size = 14),
         axis.text.y = element_blank(), axis.ticks.y = element_blank(),
         axis.line.y = element_blank()) +
-  scale_fill_manual(values = cbPalette[-1]) +
-  scale_colour_manual(values = cbPalette[-1]) +
+  scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
+  scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
   geom_histogram(fill = "transparent", bins = 45) +
   geom_vline(data = hcv_hvr.dt.long[, mean(VAL), .(DX, METHOD)],
              aes(xintercept = V1, colour = DX), linetype = "dashed",
@@ -370,13 +373,13 @@ g <- ggplot(aes(x = VAL, colour = DX), data = hcv_hvr.dt.long) +
 
 fnames <- here(paste("plots/adni-bl_effsizes-dx",
                      c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1])) {
+if (!file.exists(fnames[1]) || ReDoPlots) {
   png(fnames[1], width = 13, height = 5, units = "in", res = 600)
   print(g)
   dev.off()
 }
 
-if (!file.exists(fnames[2])) {
+if (!file.exists(fnames[2]) || ReDoPlots) {
   tiff(fnames[2], width = 13, height = 5, units = "in", res = 600)
   print(g)
   dev.off()
@@ -398,7 +401,7 @@ diag_fun  <- function(data, mapping, var, labels.dt,...) {
 # HC By Sex
 fnames <- here(paste("plots/adni-bl_similarity_hcv_sex",
                      c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
+if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
   g <- ggpairs(hcv.dt, columns = 4:8,
                aes(colour = PTGENDER, alpha = 0.7),
                upper = list(continuous = wrap("cor", method = "spearman")),
@@ -406,18 +409,18 @@ if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
                                              labels.dt = effvals_hcv_sex))) +
     theme_classic(base_size = 12) +
     theme(text = element_text(size = 14)) +
-    scale_fill_manual(values = cbPalette[-1]) +
-    scale_colour_manual(values = cbPalette[-1]) +
+    scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
+    scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
     labs(caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
 }
 
-if (!file.exists(fnames[1])) {
+if (!file.exists(fnames[1]) || ReDoPlots) {
   png(fnames[1], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()
 }
 
-if (!file.exists(fnames[2])) {
+if (!file.exists(fnames[2]) || ReDoPlots) {
   tiff(fnames[2], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()
@@ -426,7 +429,7 @@ if (!file.exists(fnames[2])) {
 # HVR By Sex
 fnames <- here(paste("plots/adni-bl_similarity_hvr_sex",
                      c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
+if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
   g <- ggpairs(hvr.dt, columns = 4:7,
                aes(colour = PTGENDER, alpha = 0.7),
                upper = list(continuous = wrap("cor", method = "spearman")),
@@ -434,18 +437,18 @@ if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
                                              labels.dt = effvals_hvr_sex))) +
     theme_classic(base_size = 12) +
     theme(text = element_text(size = 14)) +
-    scale_fill_manual(values = cbPalette[-1]) +
-    scale_colour_manual(values = cbPalette[-1]) +
+    scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
+    scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
     labs(caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
 }
 
-if (!file.exists(fnames[1])) {
+if (!file.exists(fnames[1]) || ReDoPlots) {
   png(fnames[1], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()
 }
 
-if (!file.exists(fnames[2])) {
+if (!file.exists(fnames[2]) || ReDoPlots) {
   tiff(fnames[2], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()
@@ -454,7 +457,7 @@ if (!file.exists(fnames[2])) {
 # HC By DX
 fnames <- here(paste("plots/adni-bl_similarity_hcv_dx",
                      c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
+if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
   g <- ggpairs(hcv.dt, columns = 4:8,
                aes(colour = DX, alpha = 0.7),
                upper = list(continuous = wrap("cor", method = "spearman")),
@@ -462,18 +465,18 @@ if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
                                              labels.dt = effvals_hcv_dx))) +
     theme_classic(base_size = 12) +
     theme(text = element_text(size = 14)) +
-    scale_fill_manual(values = cbPalette[-1]) +
-    scale_colour_manual(values = cbPalette[-1]) +
+    scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
+    scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
     labs(caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
 }
 
-if (!file.exists(fnames[1])) {
+if (!file.exists(fnames[1]) || ReDoPlots) {
   png(fnames[1], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()
 }
 
-if (!file.exists(fnames[2])) {
+if (!file.exists(fnames[2]) || ReDoPlots) {
   tiff(fnames[2], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()
@@ -482,7 +485,7 @@ if (!file.exists(fnames[2])) {
 # HVR By DX
 fnames <- here(paste("plots/adni-bl_similarity_hvr_dx",
                      c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
+if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
   g <- ggpairs(hvr.dt, columns = 4:7,
                aes(colour = DX, alpha = 0.7),
                upper = list(continuous = wrap("cor", method = "spearman")),
@@ -490,18 +493,18 @@ if (!file.exists(fnames[1]) || !file.exists(fnames[2])) {
                                              labels.dt = effvals_hvr_dx))) +
     theme_classic(base_size = 12) +
     theme(text = element_text(size = 14)) +
-    scale_fill_manual(values = cbPalette[-1]) +
-    scale_colour_manual(values = cbPalette[-1]) +
+    scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
+    scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
     labs(caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
 }
 
-if (!file.exists(fnames[1])) {
+if (!file.exists(fnames[1]) || ReDoPlots) {
   png(fnames[1], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()
 }
 
-if (!file.exists(fnames[2])) {
+if (!file.exists(fnames[2]) || ReDoPlots) {
   tiff(fnames[2], width = 13, height = 7, units = "in", res = 600)
   print(g)
   dev.off()

@@ -11,7 +11,7 @@ library(glue)
 
 # Read RDS objects
 adnimerge <- here("data/rds/adnimerge_baseline.rds") |> read_rds()
-volumes   <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds") |>
+volumes   <- here("data/rds/adni-bl_volumes_icv-adjusted.rds") |>
             read_rds()
 
 # Merge
@@ -22,12 +22,20 @@ DT        <- volumes[METHOD == "cnn"
                        RAVLT_immediate, RAVLT_learning, RAVLT_forgetting,
                        Left_HC        = HC_l,
                        Left_HC_stx    = HC_stx_l,
-                       Left_HC_norm   = HC_norm_l,
+                       Left_HC_prop   = HC_prop_l,
+                       Left_HC_pcp    = HC_pcp_l,
+                       Left_HC_res    = HC_res_l,
                        Left_HVR       = HVR_l,
+                       Left_HVR_pcp   = HVR_pcp_l,
+                       Left_HVR_res   = HVR_res_l,
                        Right_HC       = HC_r,
                        Right_HC_stx   = HC_stx_r,
-                       Right_HC_norm  = HC_norm_r,
-                       Right_HVR      = HVR_r)
+                       Right_HC_prop  = HC_prop_r,
+                       Right_HC_pcp   = HC_pcp_r,
+                       Right_HC_res   = HC_res_r,
+                       Right_HVR      = HVR_r,
+                       Right_HVR_pcp  = HVR_pcp_r,
+                       Right_HVR_res  = HVR_res_r)
                    ][!is.na(Left_HC)]
 
 ## ApoE4: binarized
@@ -154,29 +162,29 @@ res_tst[[3]]    <- twoClassSummary(preds_hcstx_dt,
                                    lev = levels(preds_hcstx_dt$obs))
 preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
-# HC_norm
-f_aboost_hcnorm <- here("data/rds/adni-bl_model-conv3_adaboost_hc_norm.rds")
-if (file.exists(f_aboost_hcnorm)) {
+# HC_prop
+f_aboost_hcprop <- here("data/rds/adni-bl_model-conv3_adaboost_hc_prop.rds")
+if (file.exists(f_aboost_hcprop)) {
 #if (FALSE) {
-  aboost_hcnorm <- read_rds(f_aboost_hcnorm)
+  aboost_hcprop <- read_rds(f_aboost_hcprop)
 } else {
-  cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
-  aboost_hcnorm <- train(CONV_3Y ~ .,
+  cols          <- c("CONV_3Y", "Left_HC_prop", "Right_HC_prop", covars)
+  aboost_hcprop <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "AdaBag",
                          trControl  = fit_ctl,
                          tuneGrid   = tune_grid,
                          metric     = "ROC")
-  write_rds(aboost_hcnorm, f_aboost_hcnorm)
+  write_rds(aboost_hcprop, f_aboost_hcprop)
 }
 
-preds_hcnorm_dt <- data.frame(obs   = dt_test[, CONV_3Y],
-                              predict(aboost_hcnorm, dt_test, type = "prob"),
-                              pred  = predict(aboost_hcnorm, dt_test))
+preds_hcprop_dt <- data.frame(obs   = dt_test[, CONV_3Y],
+                              predict(aboost_hcprop, dt_test, type = "prob"),
+                              pred  = predict(aboost_hcprop, dt_test))
 
-res_tst[[4]]    <- twoClassSummary(preds_hcnorm_dt,
-                                   lev = levels(preds_hcnorm_dt$obs))
-preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
+res_tst[[4]]    <- twoClassSummary(preds_hcprop_dt,
+                                   lev = levels(preds_hcprop_dt$obs))
+preds_hcprop    <- fifelse(preds_hcprop_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_aboost_hvr    <- here("data/rds/adni-bl_model-conv3_adaboost_hvr.rds")
@@ -207,17 +215,17 @@ preds_roc       <- data.table(OBS     = dt_test[, CONV_3Y],
                               BASE    = preds_base,
                               HC      = preds_hc,
                               HC_stx  = preds_hcstx,
-                              HC_norm = preds_hcnorm,
+                              HC_prop = preds_hcprop,
                               HVR     = preds_hvr)
-aboost_roc      <- roc(OBS ~ BASE + HC + HC_stx + HC_norm + HVR,
+aboost_roc      <- roc(OBS ~ BASE + HC + HC_stx + HC_prop + HVR,
                        data = preds_roc)
-rm(preds_base, preds_hc, preds_hcstx, preds_hcnorm, preds_hvr, preds_roc)
+rm(preds_base, preds_hc, preds_hcstx, preds_hcprop, preds_hvr, preds_roc)
 
 
 ## Table of results
 results_aboost  <- rbindlist(lapply(res_tst, data.table))
 results_aboost[, `:=`(metric = rep(c("ROC", "Sens", "Spec"), times = 5),
-                      var    = rep(c("Base", "HC", "HC_stx", "HC_norm", "HVR"),
+                      var    = rep(c("Base", "HC", "HC_stx", "HC_prop", "HVR"),
                                    each = 3))]
 
 results_aboost  <- dcast(results_aboost, ... ~ metric, value.var = "V1")
@@ -319,29 +327,29 @@ res_tst[[3]]    <- twoClassSummary(preds_hcstx_dt,
                                    lev = levels(preds_hcstx_dt$obs))
 preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
-# HC_norm
-f_svm_hcnorm <- here("data/rds/adni-bl_model-conv3_svm_hc_norm.rds")
-if (file.exists(f_svm_hcnorm)) {
+# HC_prop
+f_svm_hcprop <- here("data/rds/adni-bl_model-conv3_svm_hc_prop.rds")
+if (file.exists(f_svm_hcprop)) {
 #if (FALSE) {
-  svm_hcnorm <- read_rds(f_svm_hcnorm)
+  svm_hcprop <- read_rds(f_svm_hcprop)
 } else {
-  cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
-  svm_hcnorm <- train(CONV_3Y ~ .,
+  cols          <- c("CONV_3Y", "Left_HC_prop", "Right_HC_prop", covars)
+  svm_hcprop <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "svmLinearWeights",
                          trControl  = fit_ctl,
                          tuneGrid   = tune_grid,
                          metric     = "ROC")
-  write_rds(svm_hcnorm, f_svm_hcnorm)
+  write_rds(svm_hcprop, f_svm_hcprop)
 }
 
-preds_hcnorm_dt <- data.frame(obs   = dt_test[, CONV_3Y],
-                              predict(svm_hcnorm, dt_test, type = "prob"),
-                              pred  = predict(svm_hcnorm, dt_test))
+preds_hcprop_dt <- data.frame(obs   = dt_test[, CONV_3Y],
+                              predict(svm_hcprop, dt_test, type = "prob"),
+                              pred  = predict(svm_hcprop, dt_test))
 
-res_tst[[4]]    <- twoClassSummary(preds_hcnorm_dt,
-                                   lev = levels(preds_hcnorm_dt$obs))
-preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
+res_tst[[4]]    <- twoClassSummary(preds_hcprop_dt,
+                                   lev = levels(preds_hcprop_dt$obs))
+preds_hcprop    <- fifelse(preds_hcprop_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_svm_hvr    <- here("data/rds/adni-bl_model-conv3_svm_hvr.rds")
@@ -372,17 +380,17 @@ preds_roc       <- data.table(OBS     = dt_test[, CONV_3Y],
                               BASE    = preds_base,
                               HC      = preds_hc,
                               HC_stx  = preds_hcstx,
-                              HC_norm = preds_hcnorm,
+                              HC_prop = preds_hcprop,
                               HVR     = preds_hvr)
-svm_roc         <- roc(OBS ~ BASE + HC + HC_stx + HC_norm + HVR,
+svm_roc         <- roc(OBS ~ BASE + HC + HC_stx + HC_prop + HVR,
                        data = preds_roc)
-rm(preds_base, preds_hc, preds_hcstx, preds_hcnorm, preds_hvr, preds_roc)
+rm(preds_base, preds_hc, preds_hcstx, preds_hcprop, preds_hvr, preds_roc)
 
 
 ## Table of results
 results_svm     <- rbindlist(lapply(res_tst, data.table))
 results_svm[, `:=`(metric = rep(c("ROC", "Sens", "Spec"), times = 5),
-                   var    = rep(c("Base", "HC", "HC_stx", "HC_norm", "HVR"),
+                   var    = rep(c("Base", "HC", "HC_stx", "HC_prop", "HVR"),
                                 each = 3))]
 
 results_svm     <- dcast(results_svm, ... ~ metric, value.var = "V1")
@@ -484,29 +492,29 @@ res_tst[[3]]    <- twoClassSummary(preds_hcstx_dt,
                                    lev = levels(preds_hcstx_dt$obs))
 preds_hcstx     <- fifelse(preds_hcstx_dt$Progressor > .5, 1, 0)
 
-# HC_norm
-f_nbayes_hcnorm <- here("data/rds/adni-bl_model-conv3_nbayes_hc_norm.rds")
-if (file.exists(f_nbayes_hcnorm)) {
+# HC_prop
+f_nbayes_hcprop <- here("data/rds/adni-bl_model-conv3_nbayes_hc_prop.rds")
+if (file.exists(f_nbayes_hcprop)) {
 #if (FALSE) {
-  nbayes_hcnorm <- read_rds(f_nbayes_hcnorm)
+  nbayes_hcprop <- read_rds(f_nbayes_hcprop)
 } else {
-  cols          <- c("CONV_3Y", "Left_HC_norm", "Right_HC_norm", covars)
-  nbayes_hcnorm <- train(CONV_3Y ~ .,
+  cols          <- c("CONV_3Y", "Left_HC_prop", "Right_HC_prop", covars)
+  nbayes_hcprop <- train(CONV_3Y ~ .,
                          data       = dt_train[, ..cols],
                          method     = "naive_bayes",
                          trControl  = fit_ctl,
                          tuneGrid   = tune_grid,
                          metric     = "ROC")
-  write_rds(nbayes_hcnorm, f_nbayes_hcnorm)
+  write_rds(nbayes_hcprop, f_nbayes_hcprop)
 }
 
-preds_hcnorm_dt <- data.frame(obs   = dt_test[, CONV_3Y],
-                              predict(nbayes_hcnorm, dt_test, type = "prob"),
-                              pred  = predict(nbayes_hcnorm, dt_test))
+preds_hcprop_dt <- data.frame(obs   = dt_test[, CONV_3Y],
+                              predict(nbayes_hcprop, dt_test, type = "prob"),
+                              pred  = predict(nbayes_hcprop, dt_test))
 
-res_tst[[4]]    <- twoClassSummary(preds_hcnorm_dt,
-                                   lev = levels(preds_hcnorm_dt$obs))
-preds_hcnorm    <- fifelse(preds_hcnorm_dt$Progressor > .5, 1, 0)
+res_tst[[4]]    <- twoClassSummary(preds_hcprop_dt,
+                                   lev = levels(preds_hcprop_dt$obs))
+preds_hcprop    <- fifelse(preds_hcprop_dt$Progressor > .5, 1, 0)
 
 # HVR
 f_nbayes_hvr    <- here("data/rds/adni-bl_model-conv3_nbayes_hvr.rds")
@@ -537,17 +545,17 @@ preds_roc       <- data.table(OBS     = dt_test[, CONV_3Y],
                               BASE    = preds_base,
                               HC      = preds_hc,
                               HC_stx  = preds_hcstx,
-                              HC_norm = preds_hcnorm,
+                              HC_prop = preds_hcprop,
                               HVR     = preds_hvr)
-nbayes_roc      <- roc(OBS ~ BASE + HC + HC_stx + HC_norm + HVR,
+nbayes_roc      <- roc(OBS ~ BASE + HC + HC_stx + HC_prop + HVR,
                        data = preds_roc)
-rm(preds_base, preds_hc, preds_hcstx, preds_hcnorm, preds_hvr, preds_roc)
+rm(preds_base, preds_hc, preds_hcstx, preds_hcprop, preds_hvr, preds_roc)
 
 
 ## Table of results
 results_nbayes  <- rbindlist(lapply(res_tst, data.table))
 results_nbayes[, `:=`(metric = rep(c("ROC", "Sens", "Spec"), times = 5),
-                   var    = rep(c("Base", "HC", "HC_stx", "HC_norm", "HVR"),
+                   var    = rep(c("Base", "HC", "HC_stx", "HC_prop", "HVR"),
                                 each = 3))]
 
 results_nbayes  <- dcast(results_nbayes, ... ~ metric, value.var = "V1")
