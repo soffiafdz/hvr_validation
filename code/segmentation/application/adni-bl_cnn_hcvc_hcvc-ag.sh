@@ -161,8 +161,8 @@ do
 	in_mri=${BASE_DIR}/data/adni_baselines/${sub}/stx2_${sub}_${session}_t1.mnc
 	bname=adni_${sub}_${session}_hcvc-cnn
 
-	# HVR CNN
-	out_simple=${OUT_DIR}/hcvc/all/${bname}.mnc
+	# HCVC CNN
+	out_simple=${OUT_DIR}/adni-bl_cnn_hcvc/${bname}.mnc
 	[[ -d $(dirname $out_simple) ]] || mkd $(dirname $out_simple)
 	if [[ ! -e $out_simple ]]
 	then
@@ -171,7 +171,7 @@ do
 		qc_plot $in_mri $out_simple false
 	fi
 
-	# HVR-AG CNN
+	# HCVC-AG CNN
 	out_extra=${out_simple//hcvc/hcvc-ag}
 	[[ -d $(dirname $out_extra) ]] || mkd $(dirname $out_extra)
 	if [[ ! -e $out_extra ]]
