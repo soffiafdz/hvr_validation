@@ -50,6 +50,7 @@ do
 		echo "$sub is already processed"
 	fi
 
+	[[ ! -d "$OUT_DIR" ]] && mkdir "$OUT_DIR"
 	outfile=${OUT_DIR}/${bname}.mnc
 	if [[ ! -e $outfile || -n $changed ]]
 	then

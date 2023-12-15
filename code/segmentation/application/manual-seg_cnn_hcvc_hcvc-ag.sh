@@ -13,7 +13,7 @@ set -ux
 BASE_DIR=/ipl/ipl27/sfernandez/hvr_validation
 MRI_DIR=${BASE_DIR}/data/labels_dorothee/t1w_dorothee_resampled
 QC_DIR=${BASE_DIR}/plots/qc_man-seg/cnn
-OUT_DIR=${BASE_DIR}/data/orig_segmentations/cnn
+OUT_DIR=${BASE_DIR}/data/derivatives
 LIB_DIR=${BASE_DIR}/libraries/cnn
 
 function cnn_simple() {
@@ -154,7 +154,7 @@ do
 	bname=$(basename $in_mri .mnc)
 
 	# HVR CNN
-	out_simple=${OUT_DIR}/hcvc/${bname}_hcvc-cnn.mnc
+	out_simple=${OUT_DIR}/man-seg_cnn_hcvc/${bname}_hcvc-cnn.mnc
 	[[ -d $(dirname $out_simple) ]] || mkd $(dirname $out_simple)
 	if [[ ! -e $out_simple ]]
 	then

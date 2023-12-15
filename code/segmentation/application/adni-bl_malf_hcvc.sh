@@ -31,6 +31,7 @@ tmpSubdir=${TMP_DIR}/${sub}
 [[ ! -d "$tmpSubdir" ]] && mkdir "$tmpSubdir"
 
 changed=
+[[ ! -d "$OUT_DIR" ]] && mkdir "$OUT_DIR"
 if [[ ! -e $out ]] || $clobber
 then
 	date
