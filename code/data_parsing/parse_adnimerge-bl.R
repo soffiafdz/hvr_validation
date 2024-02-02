@@ -58,42 +58,42 @@ adnimerge         <- fread(here("data/ADNIMERGE.csv"),
 # Select only PTIDs in bl_list
 adnimerge         <- adnimerge[PTID %in% bl_mri[, PTID]]
 
-# Latest recorded session
-latest_visit      <- adnimerge[adnimerge[order(-Month), .I[1], PTID]$V1,
-                               .(PTID, LATEST_VISIT = Month)]
+## Latest recorded session
+#latest_visit      <- adnimerge[adnimerge[order(-Month), .I[1], PTID]$V1,
+                               #.(PTID, LATEST_VISIT = Month)]
 
-adnimerge         <- latest_visit[adnimerge, on = "PTID"]
+#adnimerge         <- latest_visit[adnimerge, on = "PTID"]
 
-# Parse conversion
-# Need to double check given not all SCANDATES are baseline
-conversion        <- adnimerge[DX_bl != "AD" & DX == "Dementia",
-                               .(PTID, CONV_MONTHS = Month)]
+## Parse conversion
+## Need to double check given not all SCANDATES are baseline
+#conversion        <- adnimerge[DX_bl != "AD" & DX == "Dementia",
+                               #.(PTID, CONV_MONTHS = Month)]
 
-# Pick earliest date of conversion
-conversion        <- conversion[conversion[order(CONV_MONTHS), .I[1], PTID]$V1]
+## Pick earliest date of conversion
+#conversion        <- conversion[conversion[order(CONV_MONTHS), .I[1], PTID]$V1]
 
-# Merge All data
-adnimerge         <- conversion[adnimerge, on = "PTID"
-                                ][bl_mri[, .(PTID, EXAMDATE, SCANDATE)],
-                                  on = .(PTID, EXAMDATE)]
+## Merge All data
+#adnimerge         <- conversion[adnimerge, on = "PTID"
+                                #][bl_mri[, .(PTID, EXAMDATE, SCANDATE)],
+                                  #on = .(PTID, EXAMDATE)]
 
-# Shift latest visits and Conversion according to SCANDATE
-adnimerge[, CONV_MONTHS := CONV_MONTHS - Month]
-adnimerge[, LATEST_VISIT := LATEST_VISIT - Month]
+## Shift latest visits and Conversion according to SCANDATE
+#adnimerge[, CONV_MONTHS := CONV_MONTHS - Month]
+#adnimerge[, LATEST_VISIT := LATEST_VISIT - Month]
 
-## Conversion on 2y 3y 5y
-# Converters
-adnimerge[CONV_MONTHS <= Month, CONV_MONTHS := NA]
-adnimerge[CONV_MONTHS <= 24, CONV_2Y := 1]
-adnimerge[CONV_MONTHS <= 36, CONV_3Y := 1]
-adnimerge[CONV_MONTHS <= 72, CONV_5Y := 1]
+### Conversion on 2y 3y 5y
+## Converters
+#adnimerge[CONV_MONTHS <= Month, CONV_MONTHS := NA]
+#adnimerge[CONV_MONTHS <= 24, CONV_2Y := 1]
+#adnimerge[CONV_MONTHS <= 36, CONV_3Y := 1]
+#adnimerge[CONV_MONTHS <= 72, CONV_5Y := 1]
 
-# Stables; Check that there is known DX for that time with LATEST_VISIT
-adnimerge[is.na(CONV_2Y) & LATEST_VISIT >= 24, CONV_2Y := 0]
-adnimerge[is.na(CONV_3Y) & LATEST_VISIT >= 36, CONV_3Y := 0]
-adnimerge[is.na(CONV_5Y) & LATEST_VISIT >= 72, CONV_5Y := 0]
+## Stables; Check that there is known DX for that time with LATEST_VISIT
+#adnimerge[is.na(CONV_2Y) & LATEST_VISIT >= 24, CONV_2Y := 0]
+#adnimerge[is.na(CONV_3Y) & LATEST_VISIT >= 36, CONV_3Y := 0]
+#adnimerge[is.na(CONV_5Y) & LATEST_VISIT >= 72, CONV_5Y := 0]
 
-adnimerge[, `:=`(CONV_MONTHS = NULL, LATEST_VISIT = NULL)]
+#adnimerge[, `:=`(CONV_MONTHS = NULL, LATEST_VISIT = NULL)]
 
 # Save RDS
 readr::write_rds(adnimerge, here("data/rds/adnimerge_baseline.rds"))
