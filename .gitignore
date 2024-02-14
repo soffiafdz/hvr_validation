@@ -1,5 +1,15 @@
-data/*
-libraries/*
+lists/adni_baseline.lst
+lists/adni_baseline_rev.lst
+lists/adni_preproc.lst
+lists/qrater_brainmasks_2022-12-20.csv
+lists/simon_roster.csv
+lists/simon_t1.lst
+data/ADNIMERGE.csv
+data/MRILIST.csv
+data/UCSFFSX_11_02_15_20Nov2023.csv
+data/UCSFFSX51_11_08_19_20Nov2023.csv
+data/derivatives/*.docx
+data/rds/adnimerge_baseline.rds
 plots/*
 tmp/*
 code/deprecated/*
