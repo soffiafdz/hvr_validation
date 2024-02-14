@@ -7,6 +7,13 @@ library(gtsummary)
 library(dunn.test)
 
 ## Read RDS objects
+fpath         <- here("data/rds/adni-bl_volumes_icv-adjusted.rds")
+if (file.exists(fpath)) {
+  volumes     <- fpath |> read_rds()
+} else {
+  here("code/analysis/adjust_hc-hvr_adni-bl.R") |> source()
+}
+
 fpath         <- here("data/rds/adnimerge_baseline.rds")
 if (file.exists(fpath)) {
   adnimerge   <- fpath |> read_rds()
@@ -16,28 +23,21 @@ if (file.exists(fpath)) {
 
 fpath         <- here("data/rds/adni-bl_volumes_freesurfer.rds")
 if (file.exists(fpath)) {
-  adnimerge   <- fpath |> read_rds()
+  fs_vols     <- fpath |> read_rds()
 } else {
   here("code/data_parsing/parse_freesurfer-vols.R") |> source()
 }
-fs_volumes    <- fpath |> read_rds()
-
-fpath         <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds")
-if (file.exists(fpath)) {
-  adnimerge     <- fpath |> read_rds()
-} else {
-  here("code/analysis/adjust_hc-hvr_adni-bl.R") |> source()
-}
+rm(fpath)
 
 
 # Merge
-adni          <- adnimerge[fs_volumes, on = "PTID"]
-DT            <- seg_volumes[adni, on = "PTID",
-                            .(PTID, METHOD, DX, PTGENDER, AGE, PTEDUCAT, ADAS13,
-                              RAVLT_learning = as.numeric(RAVLT_learning),
-                              adni = FS_adni * SCALEFACTOR / 2000,
-                              HC = HC_stx_mean,
-                              HVR = HVR_mean)]
+adni          <- adnimerge[fs_vols, on = "PTID"]
+DT            <- volumes[adni, on = "PTID",
+                         .(PTID, METHOD, DX, PTGENDER, AGE, PTEDUCAT, ADAS13,
+                           RAVLT_learning = as.numeric(RAVLT_learning),
+                           adni = FS_ucsf * SCALEFACTOR / 2000,
+                           HC = HC_stx_mean,
+                           HVR = HVR_mean)]
 
 DT_hvr        <- DT[, .(PTID, METHOD, HVR)]
 DT_hc         <- dcast(DT[, -"HVR"], ... ~ METHOD, value.var = "HC") |>
@@ -46,9 +46,6 @@ DT_hc         <- dcast(DT[, -"HVR"], ... ~ METHOD, value.var = "HC") |>
 DT            <- DT_hvr[DT_hc, on = .(PTID, METHOD)]
 
 demog.dt      <- unique(DT[, -c("PTID", "METHOD", "HC", "HVR")])
-demog.dt[, DX := factor(DX,
-                        levels = c("CN", "MCI", "Dementia"),
-                        labels = c("CN", "MCI", "AD"))]
 
 hc.dt         <- DT[, .(METHOD, HC, HVR)]
 

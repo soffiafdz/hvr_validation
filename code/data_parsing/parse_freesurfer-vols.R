@@ -74,10 +74,6 @@ fs_vols       <- fs6_vols[ucsf_vols,
                             LCSF, RCSF, CSF = LCSF + RCSF,
                             BRAIN, UCSFFS, FS_house, FS_ucsf = Hippocampus)]
 
-fs_vols[, DX := factor(DX,
-                       levels = c("CN", "MCI", "Dementia"),
-                       label = c("CN", "MCI", "AD"))]
-
 # Remove discarded from QC
 fpath         <- here("data/rds/ptid_qc_discarded.rds")
 if (file.exists(fpath)) {

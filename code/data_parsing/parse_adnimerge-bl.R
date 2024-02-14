@@ -59,6 +59,9 @@ adnimerge         <- fpath |>
                                       "Ventricles", "Hippocampus", "ICV",
                                       "FSVERSION"))
 
+adnimerge[, DX := factor(DX, levels = c("CN", "MCI", "Dementia"),
+                         labels = c("CH", "MCI", "AD"))]
+
 # Select only Baseline data
 adnimerge         <- adnimerge[bl_mri[, .(PTID, EXAMDATE, SCANDATE)],
                                on = .(PTID, EXAMDATE)]
