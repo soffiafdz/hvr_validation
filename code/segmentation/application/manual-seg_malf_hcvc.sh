@@ -3,10 +3,10 @@
 ## Run MALF with MCCV ##
 
 # Directories
-LIB_DIR=/ipl/scratch22/sfernandez/HVR_MALF/lib_dorothee2
-TMP_DIR=/ipl/scratch22/sfernandez/HVR_MALF/tmp/mccv8
-#QC_DIR=/ipl/scratch22/sfernandez/HVR_MALF/qc_mccv6
-OUT_DIR=/ipl/scratch22/sfernandez/HVR_MALF/proc/mccv8/original
+LIB_DIR=/ipl/ipl27/sfernandez/malf_hvr/lib_dorothee2
+TMP_DIR=/ipl/ipl27/sfernandez/malf_hvr/tmp/mccv8
+#QC_DIR=/ipl/ipl27/sfernandez/malf_hvr/qc_mccv6
+OUT_DIR=/ipl/ipl27/sfernandez/malf_hvr/proc/mccv8/original
 
 # Read subject list into an Array
 mapfile -t IDS < subjects.lst

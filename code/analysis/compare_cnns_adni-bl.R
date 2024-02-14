@@ -7,16 +7,18 @@ library(glue)
 library(ggrepel)
 
 ### Read comparison file of CNN simple vs CNN simplified and plot
-overlap <- here('data/derivatives/adni-bl_dice_cnn_simple_simplified.csv') |>
-          fread()
+fpath         <- here('data/derivatives/adni-bl_dice_cnn_simple_simplified.csv')
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                              "is required but could not be found.") |> stop()
 
+overlap <- fread(fpath)
 setnames(overlap,
          c("xcorr", "lhc", "lcsf", "rhc", "rcsf"),
          c("XCorrelation", "KAPPA_HC-left", "KAPPA_VC-left",
            "KAPPA_HC_right", "KAPPA_VC_right"))
 
-overlap_long <- melt(overlap, id.vars = "id",
-                     variable.name = "OVERLAP", value.name = "VALUE")
+overlap_long  <- melt(overlap, id.vars = "id",
+                      variable.name = "OVERLAP", value.name = "VALUE")
 
 overlap_long[, `:=`(MEDIAN = median(VALUE), SD = sd(VALUE)), by = OVERLAP]
 rm(overlap)

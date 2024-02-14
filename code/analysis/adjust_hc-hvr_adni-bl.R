@@ -2,48 +2,56 @@
 
 library(here)
 library(readr)
+library(glue)
 library(data.table)
 library(lubridate)
 
 ## Dependencies
 # ICC volume and ScaleFactors
-icc_scales      <- here("data/derivatives/adni_icc_scale.csv") |> fread()
+fpath           <- here("data/derivatives/adni_icc_scale.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                              "is required but could not be found.") |> stop()
+icc_scales      <- fread(fpath)
 icc_scales[, SCANDATE := ymd(SCANDATE)]
 
 # Curated HC CSF volumes
-f_volumes       <- here("data/rds/adni-bl_volumes_hcvc.rds")
-if (file.exists(f_volumes)) {
-  volumes       <- read_rds(f_volumes)
-  rm(f_volumes)
+fpath       <- here("data/rds/adni-bl_volumes_hcvc.rds")
+if (file.exists(fpath)) {
+  volumes       <- read_rds(fpath)
 } else {
-  s_volumes     <- here("code/qc_segmentations_adni-bl.R")
-  source(s_volumes)
-  rm(f_volumes, s_volumes, volumes_hcvcag)
+  here("code/data_parsing/qc_segmentations_adni-bl.R") |> source()
+  rm(volumes_hcvcag) # Unused
 }
 
-f_volumes_fs    <- here("data/rds/adni-bl_volumes_freesurfer.rds")
-if (file.exists(f_volumes_fs)) {
-  fs_vols       <- read_rds(f_volumes_fs)
-  rm(f_volumes_fs)
+fpath    <- here("data/rds/adni-bl_volumes_freesurfer.rds")
+if (file.exists(fpath)) {
+  fs_vols       <- read_rds(fpath)
 } else {
-  s_volumes_fs  <- here('code/compare_freesurfer_adni-bl.R')
-  source(s_volumes_fs)
-  rm(f_volumes_fs, s_volumes_fs)
+  here('code/data_parsing/parse_freesurfer-vols.R') |> source()
 }
 
 ## Controls
-adnimerge   <- here("data/rds/adnimerge_baseline.rds") |> read_rds()
+fpath    <- here("data/rds/adnimerge_baseline.rds")
+if (file.exists(fpath)) {
+  adnimerge     <- read_rds(fpath)
+} else {
+  here('code/data_parsing/parse_adnimerge-bl.R') |> source()
+}
+
 controls    <- adnimerge[DX == "CN", PTID]
-rm(adnimerge)
+rm(adnimerge, fpath)
 
 # Merge ICC and volumes
 volumes     <- rbindlist(list(volumes,
                               fs_vols[, .(LHC, RHC, HC, LCSF, RCSF, CSF,
-                                          ICC_fs = BRAIN, # use this??
-                                          PTID, SCANDATE, METHOD = "fs6")]),
+                                          #ICC_fs = BRAIN, # use this??
+                                          PTID, SCANDATE = ymd(EXAMDATE),
+                                          METHOD = "fs6")]),
                          fill = TRUE)
+rm(fs_vols)
 
 volumes     <- icc_scales[volumes, on = .(PTID, SCANDATE)]
+rm(icc_scales)
 volumes[, ICC := ICC / 1000]
 icc_mean_cn <- volumes[PTID %in% controls, .(ICC_cn = mean(ICC)), METHOD]
 
@@ -75,6 +83,8 @@ volumes_lng <- volumes[PTID %in% controls,
   melt(id.vars = c("METHOD", "ICC"),
        variable.name = "ROI",
        value.name = "VAL")
+
+rm(controls)
 
 volumes_lng[, ROI := stringr::str_remove(ROI, "_nat")]
 #volumes_lng[, ROI := stringr::str_to_lower(ROI)]
@@ -161,5 +171,4 @@ volumes     <- volumes[, .(PTID, SCANDATE, ICC, SCALEFACTOR, METHOD,
                            HVR_res_r    = HVR_r_res,
                            HVR_res_mean)]
 
-volumes |>
-  write_rds(here("data/rds/adni-bl_volumes_icv-adjusted.rds"))
+write_rds(volumes, here("data/rds/adni-bl_volumes_icv-adjusted.rds"))

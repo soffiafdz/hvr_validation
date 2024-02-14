@@ -16,9 +16,20 @@ library(ggpubr)
 ## ADNI data CN|MCI|AD
 
 # Read RDS objects
-adnimerge     <- here("data/rds/adnimerge_baseline.rds") |> read_rds()
-volumes       <- here("data/rds/adni-bl_volumes_icv-adjusted.rds") |>
-                read_rds()
+# ADNIMERGE
+fpath    <- here("data/rds/adnimerge_baseline.rds")
+if (file.exists(fpath)) {
+  adnimerge     <- read_rds(fpath)
+} else {
+  here('code/data_parsing/parse_adnimerge-bl.R') |> source()
+}
+
+fpath    <- here("data/rds/adni-bl_volumes_icv-adjusted.rds")
+if (file.exists(fpath)) {
+  volumes       <- read_rds(fpath)
+} else {
+  here('code/analysis/adjust_hc-hvr_adni.R') |> source()
+}
 
 # Merge
 DT            <- volumes[adnimerge, on = "PTID",
@@ -41,11 +52,12 @@ DT            <- volumes[adnimerge, on = "PTID",
 
 
 ## Correlation | Permutation tests
-f1 <- here("data/rds/adni-bl_hcv-hvr_corrs_non-parametric.rds")
-f2 <- here("data/rds/adni-bl_hcv-hvr_corrs_permutations_non-parametric.rds")
-if (file.exists(f1) & file.exists(f2)) {
-  corr.dt       <- read_rds(f1)
-  perms.dif.dt  <- read_rds(f2)
+fpaths <- here("data/rds", paste0("adni-bl_hcv-hvr_corrs_",
+                                  c("", "permutations_"),
+                                  "non-parametric.rds"))
+if (all(file.exists(fpaths))) {
+  corr.dt       <- read_rds(fpaths[1])
+  perms.dif.dt  <- read_rds(fpaths[2])
 } else {
   dxs           <- DT[, unique(DX)]
   mtds1         <- c("cnn", "fs6", "malf", "nlpb")
@@ -135,7 +147,7 @@ if (file.exists(f1) & file.exists(f2)) {
                               CIhigh  = cih,
                               CIlow   = cil)
 
-  write_rds(corr.dt, f1)
+  write_rds(corr.dt, fpaths[1])
 
   perms.dif1.dt <- data.table(DX      = rep(dxs, each = 3 * 4 * n_perms),
                               COVAR   = rep(covs, times = 3,
@@ -153,7 +165,7 @@ if (file.exists(f1) & file.exists(f2)) {
   perms.dif.dt  <- rbindlist(list(perms.dif1.dt, perms.dif2.dt),
                              use.names = TRUE)
 
-  write_rds(perms.dif.dt, f2)
+  write_rds(perms.dif.dt, fpaths[2])
 }
 
 # R differences DTs

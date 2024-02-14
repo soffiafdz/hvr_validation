@@ -16,23 +16,38 @@ library(dunn.test)
 ReDoPlots     <- TRUE
 
 ## Read RDS objects
-adnimerge     <- here("data/rds/adnimerge_baseline.rds") |>
-                read_rds()
-fs_volumes    <- here("data/rds/adni-bl_volumes_freesurfer.rds") |> read_rds()
-seg_volumes   <- here("data/rds/adni-bl_volumes_icv-adjusted.rds") |>
-                read_rds()
+# ADNIMERGE
+fpath    <- here("data/rds/adnimerge_baseline.rds")
+if (file.exists(fpath)) {
+  adnimerge     <- read_rds(fpath)
+} else {
+  here('code/data_parsing/parse_adnimerge-bl.R') |> source()
+}
+
+fpath    <- here("data/rds/adni-bl_volumes_freesurfer.rds")
+if (file.exists(fpath)) {
+  fs_vols       <- read_rds(fpath)
+} else {
+  here('code/data_parsing/parse_freesurfer-vols.R') |> source()
+}
+
+fpath    <- here("data/rds/adni-bl_volumes_icv-adjusted.rds")
+if (file.exists(fpath)) {
+  volumes       <- read_rds(fpath)
+} else {
+  here('code/analysis/adjust_hc-hvr_adni.R') |> source()
+}
 
 
 ## Merge
-adni          <- adnimerge[, .(PTID, PTGENDER)][fs_volumes, on = "PTID"]
-volumes       <- seg_volumes[adni,
-                            on = "PTID",
-                            .(PTID, METHOD, DX, PTGENDER,
-                              FS_V4_V5 = FS_ucsf * SCALEFACTOR / 2000,
-                              #HC = HC_stx_l + HC_stx_r,
-                              HC = HC_stx_mean,
-                              HVR = HVR_mean)]
-#rm(adnimerge, fs_volumes, seg_volumes, adni)
+adni          <- adnimerge[, .(PTID, PTGENDER)][fs_vols, on = "PTID"]
+volumes       <- volumes[adni, on = "PTID",
+                         .(PTID, METHOD, DX, PTGENDER,
+                           FS_V4_V5 = FS_ucsf * SCALEFACTOR / 2000,
+                           #HC = HC_stx_l + HC_stx_r,
+                           HC = HC_stx_mean,
+                           HVR = HVR_mean)]
+#rm(adnimerge, fs_vols, adni)
 
 ## HC volume
 hcv.dt        <- dcast(volumes[!is.na(METHOD), -"HVR"],
@@ -199,7 +214,7 @@ dxs   <- hvr.dt.long[, levels(DX)][-2] # Focus on CN-AD difference
 
 # Sex
 # Control by DX
-fnames <- here(paste("data/rds/adni-bl_effect-sizes_hvr_sex",
+fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hvr_sex",
                      c(".rds", "_sims.rds")))
 if (file.exists(fnames[2])) {
   effvals_hvr_sex <- read_rds(fnames[1])
@@ -362,7 +377,7 @@ g <- ggplot(aes(x = VAL, colour = DX), data = hcv_hvr.dt.long) +
   scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
   scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
   geom_histogram(fill = "transparent", bins = 45) +
-  geom_vline(data = hcv_hvr.dt.long[, mean(VAL), .(DX, METHOD)],
+  geom_vline(data = hcv_hvr.dt.long[, mean(VAL), .(MSR, DX, METHOD)],
              aes(xintercept = V1, colour = DX), linetype = "dashed",
              alpha = .8) +
   facet_wrap(facets = vars(MSR, METHOD), scales = "free") +
