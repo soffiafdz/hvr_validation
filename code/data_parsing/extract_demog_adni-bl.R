@@ -7,11 +7,27 @@ library(gtsummary)
 library(dunn.test)
 
 ## Read RDS objects
-adnimerge     <- here("data/rds/adnimerge_baseline.rds") |>
-                read_rds()
-fs_volumes    <- here("data/rds/adni-bl_volumes_freesurfer.rds") |> read_rds()
-seg_volumes   <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds") |>
-                read_rds()
+fpath         <- here("data/rds/adnimerge_baseline.rds")
+if (file.exists(fpath)) {
+  adnimerge   <- fpath |> read_rds()
+} else {
+  here("code/data_parsing/parse_adnimerge-bl.R") |> source()
+}
+
+fpath         <- here("data/rds/adni-bl_volumes_freesurfer.rds")
+if (file.exists(fpath)) {
+  adnimerge   <- fpath |> read_rds()
+} else {
+  here("code/data_parsing/parse_freesurfer-vols.R") |> source()
+}
+fs_volumes    <- fpath |> read_rds()
+
+fpath         <- here("data/rds/adni-bl_volumes_hc-stx-norm-nat_hvr.rds")
+if (file.exists(fpath)) {
+  adnimerge     <- fpath |> read_rds()
+} else {
+  here("code/analysis/adjust_hc-hvr_adni-bl.R") |> source()
+}
 
 
 # Merge

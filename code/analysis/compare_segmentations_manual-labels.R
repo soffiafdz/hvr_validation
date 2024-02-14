@@ -16,14 +16,10 @@ ReDoPlots     <- TRUE
 ### Read KAPPA DTs (rds) and data cleaning
 
 ## MALF
-## Full and reduced labelsets
-#malf_f <- read_rds(here("data/rds/manual-labels_dice_malf-full.rds"))
-#malf_r <- read_rds(here("data/rds/manual-labels_dice_malf-reduced.rds"))
-malf_r      <- here("data/derivatives/man-seg_kappa_hcvc_malf.csv") |> fread()
-
-## Merge DTs
-#malf <- rbindlist(list(malf_f, malf_r), use.names = TRUE)
-malf        <- malf_r
+fpath       <- here("data/derivatives/man-seg_kappa_hcvc_malf.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                              "is required but could not be found.") |> stop()
+malf        <- fread(fpath)
 
 # Pad id col
 malf[, new_id := sprintf("%03d", sub)]
@@ -36,19 +32,11 @@ setnames(malf, "new_id", "id")
 # Add method column
 malf[, method := "malf"]
 
-# Clean memory
-#rm(malf_f, malf_r, keep_cols)
-rm(malf_r, keep_cols)
-
 ## Non-local patch based
-## Full and reduced labelset
-#nlpb_f <- read_rds(here("data/rds/manual-labels_dice_nlpb-full.rds"))
-#nlpb_r <- read_rds(here("data/rds/manual-labels_dice_nlpb-reduced.rds"))
-nlpb_r      <- here("data/derivatives/man-seg_kappa_hcvc_nlpb.csv") |> fread()
-
-## Merge DTs
-#nlpb <- rbindlist(list(nlpb_f, nlpb_r), use.names = TRUE)
-nlpb        <- nlpb_r
+fpath       <- here("data/derivatives/man-seg_kappa_hcvc_nlpb.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                              "is required but could not be found.") |> stop()
+nlpb        <- fread(fpath)
 
 # Add info
 # Side
@@ -65,34 +53,11 @@ nlpb        <- nlpb[, ..keep_cols]
 # Add method column
 nlpb[, method := "nlpb"]
 
-# Clean memory
-rm(nlpb_r, keep_cols)
-
 ## nnUNet
-#cnn_f <- read_rds(here("data/rds/manual-labels_dice_cnn-full.rds"))
-#cnn_r <- read_rds(here("data/rds/manual-labels_dice_cnn-reduced.rds"))
-cnn_r       <- here("data/derivatives/man-seg_kappa_hcvc_cnn.csv") |> fread()
-
-## Clean
-#cnn_f[, `:=`(roi = str_to_lower(str_extract(cls, "HC|VC|AG")),
-             #portion = str_to_lower(str_extract(cls, "TAIL|BODY|HEAD")),
-             #side = str_extract(cls, "(?<=_)L|R"))][, cls := NULL]
-
-#cnn_r[, `:=`(roi = str_to_lower(str_extract(cls, "HC|CSF")),
-             ##portion = "whole",
-             #side = str_extract(cls, "L|R"))][, cls := NULL]
-
-## Merge DTs
-#cnn <- rbindlist(list(cnn_f, cnn_r), use.names = TRUE)
-cnn         <- cnn_r
-
-## Consistency
-#cnn[roi == "vc", roi := "csf"]
-
-##cnn[roi == "ag", portion := "whole"]
-
-#cnn[side == "L", side := "left"]
-#cnn[side == "R", side := "right"]
+fpath       <- here("data/derivatives/man-seg_kappa_hcvc_cnn.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                              "is required but could not be found.") |> stop()
+cnn         <- fread(fpath)
 
 # Add info
 # Side
@@ -109,24 +74,11 @@ cnn         <- cnn[, ..keep_cols]
 # Add method column
 cnn[, method := "cnn"]
 
-# Clean memory
-rm(cnn_r)
-
-# FreeSurfer 6.0
-fs6 <- here("data/derivatives/man-seg_kappa_hcilvc_fs.csv") |> fread()
-
-# Add info
-# Side
-fs6[label %in% 1:2, side := "left"]
-fs6[label %in% 3:4, side := "right"]
-# ROI
-fs6[label %in% c(1, 3), roi := "hc"]
-# This only uses inferior lateral ventricle
-# Maybe discard
-fs6[label %in% c(2, 4), roi := "csf"]
-
 ### Merge all three
 scores <- rbindlist(list(malf, nlpb, cnn), use.names = TRUE, fill = TRUE)
+
+# Clean memory
+rm(malf, nlpb, cnn, keep_cols)
 
 #scores[is.na(fold), fold := 0]
 
@@ -200,17 +152,32 @@ if(!file.exists(fp1_png) || !file.exists(fp1_tiff) || ReDoPlots) {
 
 ## Volumes Correlation
 # Read Volume CSVs
-manual  <- here("data/derivatives/man-seg_volumes_hcvc_manual.csv") |> fread()
-malf    <- here("data/derivatives/man-seg_volumes_hcvc_malf.csv") |> fread()
-nlpb    <- here("data/derivatives/man-seg_volumes_hcvc_nlpb.csv") |> fread()
-cnn     <- here("data/derivatives/man-seg_volumes_hcvc_cnn.csv") |> fread()
+fpath       <- here("data/derivatives/man-seg_volumes_hcvc_manual.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                               "is required but could not be found.") |> stop()
+manual  <- fread(fpath)
+
+fpath       <- here("data/derivatives/man-seg_volumes_hcvc_malf.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                               "is required but could not be found.") |> stop()
+malf    <- fread(fpath)
+
+fpath       <- here("data/derivatives/man-seg_volumes_hcvc_nlpb.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                               "is required but could not be found.") |> stop()
+nlpb    <- fread(fpath)
+
+fpath       <- here("data/derivatives/man-seg_volumes_hcvc_cnn.csv")
+if (!file.exists(fpath)) glue("File: {fpath} ",
+                               "is required but could not be found.") |> stop()
+cnn     <- fread(fpath)
 
 vols    <- rbindlist(list(manual[, METHOD := "manual"],
                           malf[, METHOD := "malf"],
                           nlpb[, METHOD := "nlpb"],
                           cnn[, METHOD := "cnn"]))
 
-rm(manual, malf, nlpb, cnn)
+rm(fpaths, manual, malf, nlpb, cnn)
 
 # Clean
 vols[, ID := str_extract(ID, "\\d{3}")]
