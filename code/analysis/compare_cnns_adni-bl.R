@@ -7,7 +7,7 @@ library(glue)
 library(ggrepel)
 
 ### Read comparison file of CNN simple vs CNN simplified and plot
-fpath         <- here('data/derivatives/adni-bl_dice_cnn_simple_simplified.csv')
+fpath         <- here('data/derivatives/adni-bl_kappa_hcvc_cnn.csv')
 if (!file.exists(fpath)) glue("File: {fpath} ",
                               "is required but could not be found.") |> stop()
 

@@ -194,8 +194,6 @@ cbPalette     <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
                    "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 ## Correlations
-corr.dt[, DX := factor(DX, levels = c("CN", "MCI", "Dementia"),
-                            labels = c("CN", "MCI", "AD"))]
 corr.dt[, COVAR := factor(COVAR, levels = c("AGE", "RAVLT_learning", "ADAS13"),
                           labels = c("Age", "Memory", "Cognition"))]
 corr.dt[, Pval_adj := p.adjust(Pval, method = "bonferroni")]
@@ -205,11 +203,6 @@ corr.dt[Pval_adj < 0.01, SIGN := "**"]
 corr.dt[Pval_adj < 0.001, SIGN := "***"]
 
 # Factor DX
-perms.dif.dt[, DX := factor(DX, levels = c("CN", "MCI", "Dementia"),
-                            labels = c("CN", "MCI", "AD"))]
-corr.dif.dt[, DX := factor(DX, levels = c("CN", "MCI", "Dementia"),
-                            labels = c("CN", "MCI", "AD"))]
-
 corr.perm.dt1 <- corr.dif.dt[perms.dif.dt,
                             on = .(DX, COVAR, METHOD)
                             ][COVAR != "RAVLT_learning",
@@ -239,6 +232,7 @@ corr.perm.sign.dt[, COVAR := factor(COVAR,
 
 corr.perm.sign.dt <- corr.dt[, .(Y = max(CIhigh)), .(DX, COVAR, METHOD)
                              ][corr.perm.sign.dt, on = .(DX, COVAR, METHOD)]
+
 
 # FS_V6
 p1  <- ggplot(corr.dt[METHOD == "FS_V6"], aes(HC, R, colour = HC)) +
