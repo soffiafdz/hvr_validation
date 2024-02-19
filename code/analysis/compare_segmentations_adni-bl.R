@@ -14,6 +14,7 @@ library(dunn.test)
 
 ## Remake plots
 ReDoPlots     <- TRUE
+ReRunSims     <- TRUE
 
 ## Read RDS objects
 # ADNIMERGE
@@ -40,9 +41,9 @@ if (file.exists(fpath)) {
 
 
 ## Merge
-adni          <- adnimerge[, .(PTID, PTGENDER)][fs_vols, on = "PTID"]
-volumes       <- volumes[adni, on = "PTID",
-                         .(PTID, METHOD, DX, PTGENDER,
+adni          <- fs_vols[, -2][adnimerge, on = .(PTID, EXAMDATE = SCANDATE)]
+volumes       <- adni[volumes, on = "PTID",
+                         .(PTID, METHOD, DX,
                            FS_V4_V5 = FS_ucsf * SCALEFACTOR / 2000,
                            #HC = HC_stx_l + HC_stx_r,
                            HC = HC_stx_mean,
@@ -57,14 +58,15 @@ setnames(hcv.dt,
          c("cnn", "malf", "nlpb", "fs6"),
          c("CNN", "MALF", "NLPB", "FS_V6"))
 
-setcolorder(hcv.dt, c(1:4, 6))
+setcolorder(hcv.dt,
+            c("PTID", "DX", "CNN", "NLPB", "MALF", "FS_V4_V5", "FS_V6"))
 
-hcv.dt.long   <- melt(hcv.dt, id.vars = c(1:3),
+hcv.dt.long   <- melt(hcv.dt, id.vars = c(1:2),
                       variable.name = "METHOD", value.name = "HCV")
 hcv.dt.long   <- hcv.dt.long[!is.na(HCV)]
 
 # Table
-hcv.dt[, -c("PTID", "PTGENDER")] |>
+hcv.dt[, -"PTID"] |>
   tbl_summary(by = DX,
               label = list(FS_V4_V5 ~ "FreeSurfer (v4.3 & v5.1)",
                            FS_V6 ~ "FreeSurfer (v6.0)"),
@@ -104,15 +106,16 @@ setnames(hvr.dt,
          c("cnn", "malf", "nlpb", "fs6"),
          c("CNN", "MALF", "NLPB", "FS_V6"))
 
-setcolorder(hvr.dt, c(1:3, 5))
+setcolorder(hvr.dt,
+            c("PTID", "DX", "CNN", "NLPB", "MALF", "FS_V6"))
 
-hvr.dt.long   <- melt(hvr.dt, id.vars = c(1:3),
+hvr.dt.long   <- melt(hvr.dt, id.vars = c(1:2),
                       variable.name = "METHOD", value.name = "HVR")
 hvr.dt.long   <- hvr.dt.long[!is.na(HVR)]
 hvr.dt.long[, METHOD := factor(METHOD)]
 
 # Table
-hvr.dt[, -c("PTID", "PTGENDER")] |>
+hvr.dt[, -"PTID"] |>
   tbl_summary(by = DX,
               label = FS_V6 ~ "FreeSurfer (v6.0)",
               statistic = all_continuous() ~ "{mean} ({sd})",
@@ -127,53 +130,13 @@ hvr.dt[, -c("PTID", "PTGENDER")] |>
 ## Effect sizes
 # HC volume (sum of sides)
 mtds  <- hcv.dt.long[, levels(METHOD)]
-dxs   <- hcv.dt.long[, levels(DX)][-2] # Focus on CN-AD difference
+dxs   <- hcv.dt.long[, levels(DX)][-2] # Focus on CH-AD difference
 
-# Sex
-# Control by DX
-fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hcv_sex",
-                     c(".rds", "_sims.rds")))
-if (file.exists(fnames[2])) {
-  effvals_hcv_sex <- read_rds(fnames[1])
-  effsims_hcv_sex <- read_rds(fnames[2])
-} else {
-  effs <- bounds_l <- bounds_h <- vector()
-  sims <- vector("list", length(mtds))
-  names(sims) <- mtds
-  for (mtd in mtds) {
-    effect <- bootES(hcv.dt.long[METHOD == mtd],
-                     data.col = "HCV",
-                     group.col = "PTGENDER",
-                     block.col = "DX",
-                     contrast = c("Male", "Female"),
-                     effect.type = "cohens.d")
-    sims[[mtd]] <- effect$t
-    effs        <- c(effs, effect$t0)
-    bounds_l    <- c(bounds_l, effect$bounds[1])
-    bounds_h    <- c(bounds_h, effect$bounds[2])
-  }
-
-  effsims_hcv_sex <- as.data.table(sims)
-
-  effvals_hcv_sex <- data.table(METHOD    = mtds,
-                                EFFECT    = round(effs, 2),
-                                BOUNDS_l  = round(bounds_l, 2),
-                                BOUNDS_h  = round(bounds_h, 2))
-
-  effvals_hcv_sex[, `:=`(PTGENDER = NA, DX = NA,
-                         LABEL = paste0("d = ", EFFECT,
-                                        " [", BOUNDS_l,
-                                        ", ", BOUNDS_h, "]"))]
-  write_rds(effvals_hcv_sex, fnames[1])
-  write_rds(effsims_hcv_sex, fnames[2])
-}
-
-
-# CN vs AD
-# Glass' delta (CN sd only)
+# CH vs AD
+# Glass' delta (CH sd only)
 fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hcv_dx",
                      c(".rds", "_sims.rds")))
-if (file.exists(fnames[2])) {
+if (all(file.exists(fnames), !ReRunSims)) {
   effvals_hcv_dx <- read_rds(fnames[1])
   effsims_hcv_dx <- read_rds(fnames[2])
 } else {
@@ -184,9 +147,9 @@ if (file.exists(fnames[2])) {
     effect <- bootES(hcv.dt.long[METHOD == mtd & DX %in% dxs],
                      data.col       = "HCV",
                      group.col      = "DX",
-                     contrast       = c("CN", "AD"),
+                     contrast       = c("CH", "AD"),
                      effect.type    = "cohens.d",
-                     glass.control  = "CN")
+                     glass.control  = "CH")
     sims[[mtd]] <- effect$t
     effs        <- c(effs, effect$t0)
     bounds_l    <- c(bounds_l, effect$bounds[1])
@@ -210,52 +173,13 @@ if (file.exists(fnames[2])) {
 
 # HVR (average of sides)
 mtds  <- hvr.dt.long[, levels(METHOD)]
-dxs   <- hvr.dt.long[, levels(DX)][-2] # Focus on CN-AD difference
+dxs   <- hvr.dt.long[, levels(DX)][-2] # Focus on CH-AD difference
 
-# Sex
-# Control by DX
-fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hvr_sex",
-                     c(".rds", "_sims.rds")))
-if (file.exists(fnames[2])) {
-  effvals_hvr_sex <- read_rds(fnames[1])
-  effsims_hvr_sex <- read_rds(fnames[2])
-} else {
-  effs <- bounds_l <- bounds_h <- vector()
-  sims <- vector("list", length(mtds))
-  names(sims) <- mtds
-  for (mtd in mtds) {
-    effect <- bootES(hvr.dt.long[METHOD == mtd],
-                     data.col = "HVR",
-                     group.col = "PTGENDER",
-                     block.col = "DX",
-                     contrast = c("Male", "Female"),
-                     effect.type = "cohens.d")
-    sims[[mtd]] <- effect$t
-    effs        <- c(effs, effect$t0)
-    bounds_l    <- c(bounds_l, effect$bounds[1])
-    bounds_h    <- c(bounds_h, effect$bounds[2])
-  }
-
-  effsims_hvr_sex <- as.data.table(sims)
-
-  effvals_hvr_sex <- data.table(METHOD    = mtds,
-                                EFFECT    = round(effs, 2),
-                                BOUNDS_l  = round(bounds_l, 2),
-                                BOUNDS_h  = round(bounds_h, 2))
-
-  effvals_hvr_sex[, `:=`(PTGENDER = NA, DX = NA,
-                         LABEL = paste0("d = ", EFFECT,
-                                        " [", BOUNDS_l,
-                                        ", ", BOUNDS_h, "]"))]
-  write_rds(effvals_hvr_sex, fnames[1])
-  write_rds(effsims_hvr_sex, fnames[2])
-}
-
-# CN vs AD
-# Glass' delta (CN sd only)
+# CH vs AD
+# Glass' delta (CH sd only)
 fnames <- here(paste0("data/rds/adni-bl_effect-sizes_hvr_dx",
                      c(".rds", "_sims.rds")))
-if (file.exists(fnames[2])) {
+if (all(file.exists(fnames), !ReRunSims)) {
   effvals_hvr_dx <- read_rds(fnames[1])
   effsims_hvr_dx <- read_rds(fnames[2])
 } else {
@@ -266,9 +190,9 @@ if (file.exists(fnames[2])) {
     effect <- bootES(hvr.dt.long[METHOD == mtd & DX %in% dxs],
                      data.col       = "HVR",
                      group.col      = "DX",
-                     contrast       = c("CN", "AD"),
+                     contrast       = c("CH", "AD"),
                      effect.type    = "cohens.d",
-                     glass.control  = "CN")
+                     glass.control  = "CH")
     sims[[mtd]] <- effect$t
     effs        <- c(effs, effect$t0)
     bounds_l    <- c(bounds_l, effect$bounds[1])
@@ -288,9 +212,6 @@ if (file.exists(fnames[2])) {
   write_rds(effvals_hvr_dx, fnames[1])
   write_rds(effsims_hvr_dx, fnames[2])
 }
-
-## Bootstrap effect sizes
-
 
 ## Plots
 # Palette
@@ -359,8 +280,8 @@ if (!file.exists(fnames[2]) || ReDoPlots) {
   print(g)
   dev.off()
 }
-# Both HCV and HVR
 
+# Both HCV and HVR
 hcv_hvr.dt.long <- rbindlist(list(hcv.dt.long[, .(MSR = "HCV", DX, METHOD,
                                                   VAL = HCV)],
                                   hvr.dt.long[, .(MSR = "HVR", DX, METHOD,
@@ -413,67 +334,11 @@ diag_fun  <- function(data, mapping, var, labels.dt,...) {
                   size = 3.5, x = -Inf, y = -Inf, hjust = -0.1, vjust = -0.25)
 }
 
-# HC By Sex
-fnames <- here(paste("plots/adni-bl_similarity_hcv_sex",
-                     c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
-  g <- ggpairs(hcv.dt, columns = 4:8,
-               aes(colour = PTGENDER, alpha = 0.7),
-               upper = list(continuous = wrap("cor", method = "spearman")),
-               diag = list(continuous = wrap(diag_fun,
-                                             labels.dt = effvals_hcv_sex))) +
-    theme_classic(base_size = 12) +
-    theme(text = element_text(size = 14)) +
-    scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
-    scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
-    labs(caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
-}
-
-if (!file.exists(fnames[1]) || ReDoPlots) {
-  png(fnames[1], width = 13, height = 7, units = "in", res = 600)
-  print(g)
-  dev.off()
-}
-
-if (!file.exists(fnames[2]) || ReDoPlots) {
-  tiff(fnames[2], width = 13, height = 7, units = "in", res = 600)
-  print(g)
-  dev.off()
-}
-
-# HVR By Sex
-fnames <- here(paste("plots/adni-bl_similarity_hvr_sex",
-                     c("png", "tiff"), sep = "."))
-if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
-  g <- ggpairs(hvr.dt, columns = 4:7,
-               aes(colour = PTGENDER, alpha = 0.7),
-               upper = list(continuous = wrap("cor", method = "spearman")),
-               diag = list(continuous = wrap(diag_fun,
-                                             labels.dt = effvals_hvr_sex))) +
-    theme_classic(base_size = 12) +
-    theme(text = element_text(size = 14)) +
-    scale_fill_manual(values = cbPalette[c(2:3, 8)]) +
-    scale_colour_manual(values = cbPalette[c(2:3, 8)]) +
-    labs(caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
-}
-
-if (!file.exists(fnames[1]) || ReDoPlots) {
-  png(fnames[1], width = 13, height = 7, units = "in", res = 600)
-  print(g)
-  dev.off()
-}
-
-if (!file.exists(fnames[2]) || ReDoPlots) {
-  tiff(fnames[2], width = 13, height = 7, units = "in", res = 600)
-  print(g)
-  dev.off()
-}
-
 # HC By DX
 fnames <- here(paste("plots/adni-bl_similarity_hcv_dx",
                      c("png", "tiff"), sep = "."))
 if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
-  g <- ggpairs(hcv.dt, columns = 4:8,
+  g <- ggpairs(hcv.dt, columns = 3:7,
                aes(colour = DX, alpha = 0.7),
                upper = list(continuous = wrap("cor", method = "spearman")),
                diag = list(continuous = wrap(diag_fun,
@@ -501,7 +366,7 @@ if (!file.exists(fnames[2]) || ReDoPlots) {
 fnames <- here(paste("plots/adni-bl_similarity_hvr_dx",
                      c("png", "tiff"), sep = "."))
 if (!file.exists(fnames[1]) || !file.exists(fnames[2]) || ReDoPlots) {
-  g <- ggpairs(hvr.dt, columns = 4:7,
+  g <- ggpairs(hvr.dt, columns = 3:6,
                aes(colour = DX, alpha = 0.7),
                upper = list(continuous = wrap("cor", method = "spearman")),
                diag = list(continuous = wrap(diag_fun,

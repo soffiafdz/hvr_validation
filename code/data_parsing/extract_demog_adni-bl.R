@@ -7,13 +7,6 @@ library(gtsummary)
 library(dunn.test)
 
 ## Read RDS objects
-fpath         <- here("data/rds/adni-bl_volumes_icv-adjusted.rds")
-if (file.exists(fpath)) {
-  volumes     <- fpath |> read_rds()
-} else {
-  here("code/analysis/adjust_hc-hvr_adni-bl.R") |> source()
-}
-
 fpath         <- here("data/rds/adnimerge_baseline.rds")
 if (file.exists(fpath)) {
   adnimerge   <- fpath |> read_rds()
@@ -21,33 +14,18 @@ if (file.exists(fpath)) {
   here("code/data_parsing/parse_adnimerge-bl.R") |> source()
 }
 
-fpath         <- here("data/rds/adni-bl_volumes_freesurfer.rds")
+fpath         <- here("data/rds/adni-bl_volumes_hcvc.rds")
 if (file.exists(fpath)) {
-  fs_vols     <- fpath |> read_rds()
+  volumes     <- fpath |> read_rds()
 } else {
-  here("code/data_parsing/parse_freesurfer-vols.R") |> source()
+  here("code/data_parsing/qc_segmentations_adni-bl.R") |> source()
 }
-rm(fpath)
 
 
 # Merge
-adni          <- adnimerge[fs_vols, on = "PTID"]
-DT            <- volumes[adni, on = "PTID",
-                         .(PTID, METHOD, DX, PTGENDER, AGE, PTEDUCAT, ADAS13,
-                           RAVLT_learning = as.numeric(RAVLT_learning),
-                           adni = FS_ucsf * SCALEFACTOR / 2000,
-                           HC = HC_stx_mean,
-                           HVR = HVR_mean)]
-
-DT_hvr        <- DT[, .(PTID, METHOD, HVR)]
-DT_hc         <- dcast(DT[, -"HVR"], ... ~ METHOD, value.var = "HC") |>
-                melt(id.vars = 1:7, variable.name = "METHOD", value.name = "HC")
-
-DT            <- DT_hvr[DT_hc, on = .(PTID, METHOD)]
-
-demog.dt      <- unique(DT[, -c("PTID", "METHOD", "HC", "HVR")])
-
-hc.dt         <- DT[, .(METHOD, HC, HVR)]
+demog.dt      <- adnimerge[volumes[METHOD == "cnn"], on = "PTID",
+                         .(PTID, DX, PTGENDER, AGE, PTEDUCAT, ADAS13,
+                           RAVLT_learning = as.numeric(RAVLT_learning))]
 
 # N
 demog.dt[, .N, DX]
@@ -73,12 +51,12 @@ demog.dt[!is.na(RAVLT_learning),
            SD = sd(RAVLT_learning)), DX]
 
 # Demographics table
-demog.dt |>
+demog.dt[, -1] |>
   tbl_summary(by = DX,
               label = list(PTGENDER ~ "Sex",
                            AGE ~ "Age (years)",
                            PTEDUCAT ~ "Education (years)",
-                           RAVLT_learning ~ "RAVLT (learning subtest)"),
+                           RAVLT_learning ~ "RAVLT (learning)"),
               statistic = all_continuous() ~ "{mean} ({sd})",
               missing_text = "Missing") |>
   modify_header(label ~ "**Variable**") |>

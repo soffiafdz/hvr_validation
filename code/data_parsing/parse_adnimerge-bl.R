@@ -66,6 +66,12 @@ adnimerge[, DX := factor(DX, levels = c("CN", "MCI", "Dementia"),
 adnimerge         <- adnimerge[bl_mri[, .(PTID, EXAMDATE, SCANDATE)],
                                on = .(PTID, EXAMDATE)]
 
+# Use DX_bl for missing DX
+adnimerge[is.na(DX), DX := DX_bl]
+adnimerge[DX_bl == "CN", DX := "CH"]
+adnimerge[DX_bl %like% "MCI", DX := "MCI"]
+adnimerge[, DX := factor(DX)]
+
 # Save RDS
 outdir            <- here("data/rds")
 if (!file.exists(outdir)) dir.create(outdir, recursive = TRUE)
