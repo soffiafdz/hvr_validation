@@ -15,6 +15,8 @@ library(ggpubr)
 ## Calculate and compare correlations of HC & Age | Memory | Cognition
 ## ADNI data CN|MCI|AD
 
+ReRunPerms      <- TRUE
+
 # Read RDS objects
 # ADNIMERGE
 fpath    <- here("data/rds/adnimerge_baseline.rds")
@@ -32,7 +34,7 @@ if (file.exists(fpath)) {
 }
 
 # Merge
-DT            <- volumes[adnimerge, on = "PTID",
+DT            <- adnimerge[volumes, on = "PTID",
                          .(PTID, METHOD, DX, AGE, ADAS13,
                            #RAVLT_immediate, RAVLT_learning, RAVLT_forgetting,
                            RAVLT_immediate = as.numeric(RAVLT_immediate),
@@ -44,8 +46,7 @@ DT            <- volumes[adnimerge, on = "PTID",
                            HCv = HC_stx_mean, # Head-size normalized
                            HVR_l, HVR_r,
                            HVR = HVR_mean)
-                         ][DX != ""       &
-                           !is.na(HVR)    &
+                         ][!is.na(HVR)    &
                            !is.na(ADAS13) &
                            !is.na(RAVLT_learning)]
 
@@ -55,7 +56,7 @@ DT            <- volumes[adnimerge, on = "PTID",
 fpaths <- here("data/rds", paste0("adni-bl_hcv-hvr_corrs_",
                                   c("", "permutations_"),
                                   "non-parametric.rds"))
-if (all(file.exists(fpaths))) {
+if (all(file.exists(fpaths), !ReRunPerms)) {
   corr.dt       <- read_rds(fpaths[1])
   perms.dif.dt  <- read_rds(fpaths[2])
 } else {

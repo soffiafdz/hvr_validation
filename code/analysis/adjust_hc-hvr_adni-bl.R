@@ -38,12 +38,18 @@ if (file.exists(fpath)) {
   here('code/data_parsing/parse_adnimerge-bl.R') |> source()
 }
 
-controls    <- adnimerge[DX == "CN", PTID]
+controls    <- adnimerge[DX == "CH", PTID]
 rm(adnimerge, fpath)
+
+# Remove failed segmentations
+fs_vols     <- fs_vols[volumes[METHOD == "cnn", .(PTID)], on = "PTID"]
+fs_vols[!is.na(FS_house), QC := "Pass"]
+fs_vols[is.na(QC), QC := "Fail"]
+#volumes[QC == "Fail", c("LHC", "LCSF", "RHC", "RCSF", "HC", "CSF") := NA]
 
 # Merge ICC and volumes
 volumes     <- rbindlist(list(volumes,
-                              fs_vols[, .(LHC, RHC, HC, LCSF, RCSF, CSF,
+                              fs_vols[, .(LHC, RHC, HC, LCSF, RCSF, CSF, QC,
                                           #ICC_fs = BRAIN, # use this??
                                           PTID, SCANDATE = ymd(EXAMDATE),
                                           METHOD = "fs6")]),
@@ -53,12 +59,13 @@ rm(fs_vols)
 volumes     <- icc_scales[volumes, on = .(PTID, SCANDATE)]
 rm(icc_scales)
 volumes[, ICC := ICC / 1000]
-icc_mean_cn <- volumes[PTID %in% controls, .(ICC_cn = mean(ICC)), METHOD]
+icc_mean_cn <- volumes[QC == "Pass"
+                       ][PTID %in% controls, .(ICC_cn = mean(ICC)), METHOD]
 
 # Bring back to native scale
 # To convert stx volumes to native space DIVIDE by SCALEFACTOR
 # Scale everything to cm^3
-volumes[METHOD == 'fs6',
+volumes[QC == "Pass" & METHOD == 'fs6',
         `:=`(HC_l_nat     = LHC               / 1000,
              HC_r_nat     = RHC               / 1000,
              CSF_l_nat    = LCSF              / 1000,
@@ -66,7 +73,7 @@ volumes[METHOD == 'fs6',
              HC_l_stx     = LHC * SCALEFACTOR / 1000,
              HC_r_stx     = RHC * SCALEFACTOR / 1000)]
 
-volumes[METHOD != 'fs6',
+volumes[QC == "Pass" & METHOD != 'fs6',
         `:=`(HC_l_nat     = LHC   / (SCALEFACTOR * 1000),
              HC_r_nat     = RHC   / (SCALEFACTOR * 1000),
              CSF_l_nat    = LCSF  / (SCALEFACTOR * 1000),
@@ -76,7 +83,7 @@ volumes[METHOD != 'fs6',
 
 ## Regression slopes for PCP & Residual normalizations
 # Use only Controls for the models
-volumes_lng <- volumes[PTID %in% controls,
+volumes_lng <- volumes[QC == "Pass" & PTID %in% controls,
                        .(METHOD, ICC,
                          HC_l_nat, HC_r_nat,
                          CSF_l_nat, CSF_r_nat)] |>
@@ -109,7 +116,7 @@ setnames(b_res, names(b_res)[-1], paste0(names(b_res)[-1], "_b_res"))
 volumes     <- volumes[b_pcp, on = "METHOD"
                        ][b_res, on = "METHOD"
                        ][icc_mean_cn, on = "METHOD"]
-rm(volumes_lng, icc_mean_cn, b_pcp, b_res)
+#rm(volumes_lng, icc_mean_cn, b_pcp, b_res)
 
 ## Apply adjustment methods
 # HC & CSF
