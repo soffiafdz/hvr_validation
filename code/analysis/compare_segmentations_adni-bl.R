@@ -14,7 +14,7 @@ library(dunn.test)
 
 ## Remake plots
 ReDoPlots     <- TRUE
-ReRunSims     <- TRUE
+ReRunSims     <- FALSE
 
 ## Read RDS objects
 # ADNIMERGE
@@ -41,14 +41,14 @@ if (file.exists(fpath)) {
 
 
 ## Merge
-adni          <- fs_vols[, -2][adnimerge, on = .(PTID, EXAMDATE = SCANDATE)]
+adni          <- fs_vols[adnimerge, on = .(PTID, SCANDATE)]
 volumes       <- adni[volumes, on = "PTID",
                          .(PTID, METHOD, DX,
                            FS_V4_V5 = FS_ucsf * SCALEFACTOR / 2000,
                            #HC = HC_stx_l + HC_stx_r,
                            HC = HC_stx_mean,
                            HVR = HVR_mean)]
-#rm(adnimerge, fs_vols, adni)
+rm(adnimerge, fs_vols, adni)
 
 ## HC volume
 hcv.dt        <- dcast(volumes[!is.na(METHOD), -"HVR"],

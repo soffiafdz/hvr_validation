@@ -5,13 +5,22 @@ library(data.table)
 library(glue)
 
 ## Parse volumes
+fpath         <- here("data/rds/adni-bl_volumes_hcvc.rds")
+if (file.exists(fpath)) {
+  volumes     <- fpath |> read_rds()
+} else {
+  here("code/data_parsing/qc_segmentations_adni-bl.R") |> source()
+}
+
 # ADNI FSvols
 fpath         <- here("data/rds/adnimerge_baseline.rds")
-if (!file.exists(fpath)) glue("File: {fpath} ",
-                              "is required but could not be found.") |> stop()
-adnimerge     <- fpath |> read_rds()
-adni_vols     <- adnimerge[DX != "",
-                           .(PTID, RID, DX, SCANDATE, Hippocampus, FSVERSION)]
+if (file.exists(fpath)) {
+  adnimerge   <- fpath |> read_rds()
+} else {
+  here("code/data_parsing/parse_adnimerge-bl.R") |> source()
+}
+
+adni_vols     <- adnimerge[, .(PTID, RID, SCANDATE, Hippocampus, FSVERSION)]
 
 # UCSF HCvols
 fpath         <- here("data/UCSFFSX_11_02_15_20Nov2023.csv")
@@ -46,9 +55,9 @@ fs5_vols      <- fs5_vols[, .(RID, OVERALLQC, LHIPQC, RHIPQC,
 fs5_vols[, UCSFFS := 5.1]
 
 ucsf_vols     <- rbindlist(list(fs4_vols[!is.na(Hippocampus),
-                                .(PTID, SCANDATE, DX, UCSFFS, Hippocampus)],
+                                .(PTID, SCANDATE, UCSFFS, Hippocampus)],
                                 fs5_vols[!is.na(Hippocampus),
-                                .(PTID, SCANDATE, DX, UCSFFS, Hippocampus)]))
+                                .(PTID, SCANDATE, UCSFFS, Hippocampus)]))
 
 # House FSvols
 fpath         <- here("data/ADNI_FS_hc.csv")
@@ -66,23 +75,18 @@ fs6_vols2     <- fread(fpath, select = c(1, 3, 8:9),
 fs6_vols      <- fs6_vols1[fs6_vols2, on = .(PTID, DATE)]
 fs6_vols[, FS_house := LHC + RHC]
 
+# Keep only subjects that went through the segmentation algorithms
+fs6_vols      <- fs6_vols[volumes[METHOD == "cnn", .(PTID, SCANDATE)],
+                          on = .(PTID, DATE = SCANDATE)]
+
 # Merge
-fs_vols       <- fs6_vols[ucsf_vols,
-                          on = .(PTID, DATE = SCANDATE),
-                          .(PTID, DX, EXAMDATE = DATE,
+fs_vols       <- ucsf_vols[fs6_vols, on = "PTID",
+                          .(PTID, SCANDATE = DATE,
                             LHC, RHC, HC = LHC + RHC,
                             LCSF, RCSF, CSF = LCSF + RCSF,
                             BRAIN, UCSFFS, FS_house, FS_ucsf = Hippocampus)]
 
-# Remove discarded from QC
-fpath         <- here("data/rds/ptid_qc_discarded.rds")
-if (file.exists(fpath)) {
-  discarded   <- fpath |> read_rds()
-} else {
-  here("code/data_parsing/qc_segmentations_adni-bl.R") |> source()
-}
-
-fs_vols       <- unique(fs_vols[!discarded, on = "PTID"])
+fs_vols       <- unique(fs_vols)
 
 # Versions
 fs_vols[, .N, UCSFFS]
@@ -95,5 +99,5 @@ if (!file.exists(outdir)) dir.create(outdir, recursive = TRUE)
 write_rds(fs_vols, here(outdir, "adni-bl_volumes_freesurfer.rds"))
 
 ## Clean workspace
-#rm(adnimerge, adni_vols, discarded, fpath, fsv4, fs4_vols, fsv5, fs5_vols,
-   #fs6_vols1, fs6_vols2, fs6_vols, outdir, ucsf_vols)
+rm(adnimerge, adni_vols, discarded, fpath, fsv4, fs4_vols, fsv5, fs5_vols,
+   fs6_vols1, fs6_vols2, fs6_vols, outdir, ucsf_vols)

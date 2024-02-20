@@ -42,16 +42,14 @@ controls    <- adnimerge[DX == "CH", PTID]
 rm(adnimerge, fpath)
 
 # Remove failed segmentations
-fs_vols     <- fs_vols[volumes[METHOD == "cnn", .(PTID)], on = "PTID"]
 fs_vols[!is.na(FS_house), QC := "Pass"]
 fs_vols[is.na(QC), QC := "Fail"]
-#volumes[QC == "Fail", c("LHC", "LCSF", "RHC", "RCSF", "HC", "CSF") := NA]
 
 # Merge ICC and volumes
 volumes     <- rbindlist(list(volumes,
                               fs_vols[, .(LHC, RHC, HC, LCSF, RCSF, CSF, QC,
                                           #ICC_fs = BRAIN, # use this??
-                                          PTID, SCANDATE = ymd(EXAMDATE),
+                                          PTID, SCANDATE = ymd(SCANDATE),
                                           METHOD = "fs6")]),
                          fill = TRUE)
 rm(fs_vols)
@@ -116,7 +114,7 @@ setnames(b_res, names(b_res)[-1], paste0(names(b_res)[-1], "_b_res"))
 volumes     <- volumes[b_pcp, on = "METHOD"
                        ][b_res, on = "METHOD"
                        ][icc_mean_cn, on = "METHOD"]
-#rm(volumes_lng, icc_mean_cn, b_pcp, b_res)
+rm(volumes_lng, icc_mean_cn, b_pcp, b_res)
 
 ## Apply adjustment methods
 # HC & CSF
