@@ -11,11 +11,12 @@ library(ggsignif)
 library(ggtext)
 library(gridExtra)
 library(ggpubr)
+library(glue)
 
 ## Calculate and compare correlations of HC & Age | Memory | Cognition
 ## ADNI data CN|MCI|AD
 
-ReRunPerms      <- TRUE
+ReRunPerms      <- FALSE
 
 # Read RDS objects
 # ADNIMERGE
@@ -269,7 +270,8 @@ p1  <- ggplot(corr.dt[METHOD == "FS_V6"], aes(HC, R, colour = HC)) +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .5) +
   labs(title = "FS_V6", x = "HC measure", y = "Spearman's rho",
-       caption = "")
+       caption = glue("N = {DT[METHOD == 'fs6', .N]}",
+                      "\n* p < 0.05; ** p < 0.01; *** p < 0.001"))
 
 #here("plots/adni-bl_hcv-hvr_corrs_fs6.png") |>
   #ggsave(width = 4, height = 7, units = "in", dpi = 600)
@@ -316,7 +318,8 @@ p2  <- ggplot(corr.dt[METHOD == "CNN"], aes(HC, R, colour = HC)) +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .5) +
   labs(title = "CNN", x = "HC measure", y = "Spearman's rho",
-       caption = "")
+       caption = glue("N = {DT[METHOD == 'cnn', .N]}",
+                      "\n* p < 0.05; ** p < 0.01; *** p < 0.001"))
 
 #here("plots/adni-bl_hcv-hvr_corrs_cnn.png") |>
   #ggsave(width = 4, height = 7, units = "in", dpi = 600)
@@ -363,7 +366,8 @@ p3  <- ggplot(corr.dt[METHOD == "MALF"], aes(HC, R, colour = HC)) +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .4) +
   labs(title = "MALF", x = "HC measure", y = "Spearman's rho",
-       caption = "")
+       caption = glue("N = {DT[METHOD == 'malf', .N]}",
+                      "\n* p < 0.05; ** p < 0.01; *** p < 0.001"))
 
 #here("plots/adni-bl_hcv-hvr_corrs_malf.png") |>
   #ggsave(width = 4, height = 7, units = "in", dpi = 600)
@@ -409,8 +413,10 @@ p4  <- ggplot(corr.dt[METHOD == "NLPB"], aes(HC, R, colour = HC)) +
               textsize = 3, inherit.aes = FALSE) +
   scale_colour_manual(values = cbPalette[2:3]) +
   ylim(-.6, .5) +
-  labs(title = "NLPB", x = "HC measure", y = "Spearman's rho",
-       caption = "* p < 0.05; ** p < 0.01; *** p < 0.001")
+  labs(title = "NLPB",
+       x = "HC measure", y = "Spearman's rho",
+       caption = glue("N = {DT[METHOD == 'nlpb', .N]}",
+                      "\n* p < 0.05; ** p < 0.01; *** p < 0.001"))
 
 #here("plots/adni-bl_hcv-hvr_corrs_nlpb.png") |>
   #ggsave(width = 4, height = 7, units = "in", dpi = 600)
@@ -419,7 +425,7 @@ p4  <- ggplot(corr.dt[METHOD == "NLPB"], aes(HC, R, colour = HC)) +
   #ggsave(width = 4, height = 7, units = "in",
            #device = "tiff", dpi = 600)
 
-p <- grid.arrange(p1, p2, p3, p4, nrow = 2)
+p <- grid.arrange(p2, p3, p4, p1, nrow = 2)
 here("plots/adni-bl_hcv-hvr_corrs.png") |>
   ggsave(p, width = 9, height = 9, units = "in", dpi = 600)
 
