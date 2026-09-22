@@ -4,7 +4,7 @@
 ## and compile it
 
 # HERE
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 TABLESDIR=${HERE}/tables
 FIGSDIR=${HERE}/plots
 TMETADATA=${TABLESDIR}/metadata.json

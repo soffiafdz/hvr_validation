@@ -10,7 +10,7 @@ trap "rm -rf $TMPDIR" 0 1 2 15
 
 set -ux
 
-BASE_DIR=/path/to/user/project/hvr_validation
+BASE_DIR="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 QC_DIR=${BASE_DIR}/plots/qc_adni-bl/cnn
 OUT_DIR=${BASE_DIR}/data/derivatives
 LIB_DIR=${BASE_DIR}/libraries/cnn

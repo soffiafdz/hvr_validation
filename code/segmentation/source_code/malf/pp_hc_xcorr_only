@@ -223,7 +223,7 @@ elsif ($me eq "pp_hc_xcorr_only")  {
   # so the standard label, unless transformed with a non-lin xfm, will not do a good job id'ing CSF volxels...
   # but note that below, the $csf_value is not even used...
   
-  @results = split(/\n/,`mincstats -median -mask /path/to/models./ICBM_HC_models/models/HC_icbm_avg_152_t1_tal_nlin_symmetric_VI_csfmask.mnc -mask_binvalue 1 $mri`);
+  @results = split(/\n/,`mincstats -median -mask $ENV{ICBM_HC_MODELS_DIR}/HC_icbm_avg_152_t1_tal_nlin_symmetric_VI_csfmask.mnc -mask_binvalue 1 $mri`);
   ($dummy, $csf_value) = split(/\s{1,}/, $results[0]);
 
   # the goal is to estimate the range of HC GM voxel intensities for this subject's MRI

@@ -7,7 +7,7 @@
 set -ux
 
 ## HOME
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 
 ## FUNCTIONS
 # Recode labels to L-HC: 1 & R-HC 2

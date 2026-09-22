@@ -227,7 +227,7 @@ $outfile = (defined($ARGV[0])) ? shift(@ARGV) : undef;
 
 my ($modeldir, $target_basename, $target, $targetmask);
 
-$modeldir        = "/path/to/models./ICBM_HC_models/models";
+$modeldir        = "$ENV{ICBM_HC_MODELS_DIR}";
 $target_basename = "${modeldir}/HC_icbm_avg_152_t1_tal_nlin_symmetric_VI";
 $target          = "${target_basename}.mnc";
 $targetmask      = "${target_basename}_mask.mnc";

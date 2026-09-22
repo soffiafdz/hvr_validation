@@ -4,7 +4,7 @@
 
 set -xue
 
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 OUTDIR=${HERE}/data/derivatives/adni-bl_cnn_hcvc_simplified
 [[ -d $OUTDIR ]] || mkdir $OUTDIR
 

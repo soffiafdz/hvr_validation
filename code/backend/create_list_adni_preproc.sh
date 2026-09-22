@@ -6,8 +6,8 @@
 
 set -ux
 
-ADNI=/data/path/to/adni./user./ADNI/LP_2013
-HERE=/path/to/user/project/hvr_validation
+ADNI="${ADNI_PREPROC_DIR:?path of the preprocessed ADNI data}"
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 LIST=${HERE}/lists/adni_preproc.lst
 
 [[ -f $LIST ]] && rm $LIST

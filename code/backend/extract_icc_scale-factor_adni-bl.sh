@@ -6,7 +6,7 @@
 
 set -xu
 
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 LIST=${HERE}/lists/adni_preproc.lst
 VOLUMES=${HERE}/data/derivatives/adni_icc_scale.csv
 

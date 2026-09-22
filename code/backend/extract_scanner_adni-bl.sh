@@ -1,6 +1,6 @@
 #! /usr/bin/env sh
 
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 orig_list=${HERE}/lists/adni_baseline.lst
 new_list=${HERE}/lists/adni-bl_scanner.lst
 
@@ -10,7 +10,7 @@ while read -r line
 do
 	sub=$(printf $line | cut -d, -f1)
 	sess=$(printf $line | cut -d, -f2)
-	img=/path/to/adni./user./ADNI/LP_2013/$sub/$sess/clp/clp_${sub}_${sess}_t1.mnc
+	img=${ADNI_PREPROC_DIR:?path of the preprocessed ADNI data}/$sub/$sess/clp/clp_${sub}_${sess}_t1.mnc
 	tesla=$(mincheader $img | awk '/field_value/ {print $3}')
 	if [[ -z $tesla ]]
 	then
@@ -23,4 +23,4 @@ done < $orig_list
 
 ## Add manually:
 # Philips 3T
-#<ptid>....,20130315,3.
+#<ptid>,<yyyymmdd>,<field strength>

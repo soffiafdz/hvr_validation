@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 ## Link adni stx2 files listed in subject list
-WORK_PATH=/path/to/user/project/hvr_validation
+WORK_PATH="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 
 # Default list vs input
 # ID,SESS
@@ -15,7 +15,7 @@ fi
 mapfile -t IDS < $LIST
 [ ${#IDS[@]} -eq 0 ] && echo "$LIST is empty" && exit 1
 
-ADNI_PATH=/path/to/adni./user./ADNI/LP_2013
+ADNI_PATH="${ADNI_PREPROC_DIR:?path of the preprocessed ADNI data}"
 DESTINATION_PATH=${WORK_PATH}/data/adni_baselines
 
 for id in ${IDS[@]}

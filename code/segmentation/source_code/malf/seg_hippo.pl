@@ -46,11 +46,11 @@ $me = &basename($0);
 	'tmpdir'     => "",
 	'xfmdir'     => "",
 	'labeldir'   => "",
-	'modelSEG'   => "/path/to/user/project/hvr_validation/libraries/malf_dorothee/models_seg",
-	'modelDIR'   => "/path/to/user/project/hvr_validation/libraries/malf_dorothee/models",
-	'modelMRI'   => "/path/to/user/project/hvr_validation/libraries/malf_dorothee/models_mri",
-	'modelLAB'   => "/path/to/user/project/hvr_validation/libraries/malf_dorothee/labels/reduced",
-	'modelXFM'   => "/path/to/user/project/hvr_validation/libraries/malf_dorothee/models_xfms",
+	'modelSEG'   => "$ENV{MALF_LIBRARY_DIR}/models_seg",
+	'modelDIR'   => "$ENV{MALF_LIBRARY_DIR}/models",
+	'modelMRI'   => "$ENV{MALF_LIBRARY_DIR}/models_mri",
+	'modelLAB'   => "$ENV{MALF_LIBRARY_DIR}/labels/reduced",
+	'modelXFM'   => "$ENV{MALF_LIBRARY_DIR}/models_xfms",
 );
 
 $Help = <<HELP;

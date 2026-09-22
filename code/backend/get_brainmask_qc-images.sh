@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-### Obtain Brain Mask QC images from the preprocessed ADNI di
+### Obtain brain-mask QC images from the preprocessed ADNI directory
 
 set -xue
-BASE_DIR=/path/to/user/project/hvr_adni
-ADNI_DIR=/path/to/adni./user./ADNI/LP_2013
+BASE_DIR="${HVR_ADNI_DIR:?path of the hvr_adni project}"
+ADNI_DIR="${ADNI_PREPROC_DIR:?path of the preprocessed ADNI data}"
 
 LIST=${BASE_DIR}/lists/adni_baseline.lst
 

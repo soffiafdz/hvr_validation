@@ -3,10 +3,10 @@
 ## Run MALF with MCCV ##
 
 # Directories
-LIB_DIR=/path/to/user/project/malf_hvr/lib_dorothee2
-TMP_DIR=/path/to/user/project/malf_hvr/tmp/mccv8
-#QC_DIR=/path/to/user/project/malf_hvr/qc_mccv6
-OUT_DIR=/path/to/user/project/malf_hvr/proc/mccv8/original
+LIB_DIR="${MALF_HVR_DIR:?path of the MALF working directory}/lib_dorothee2"
+TMP_DIR="${MALF_HVR_DIR:?path of the MALF working directory}/tmp/mccv8"
+#QC_DIR="${MALF_HVR_DIR}/qc_mccv6"
+OUT_DIR="${MALF_HVR_DIR:?path of the MALF working directory}/proc/mccv8/original"
 
 # Read subject list into an Array
 mapfile -t IDS < subjects.lst

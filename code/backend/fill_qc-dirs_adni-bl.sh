@@ -4,7 +4,7 @@
 ## Fill them with subjects from lists
 
 set -xu
-BASE_DIR=/path/to/user/project/hvr_validation
+BASE_DIR="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 
 # Read PTIDS lists into Arrays
 mapfile -t REGIS_FAILS < ${BASE_DIR}/lists/adni-bl_qc_lin-reg_ids.lst

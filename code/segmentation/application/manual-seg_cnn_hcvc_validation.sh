@@ -3,7 +3,7 @@
 ## Apply CNN ensemble models to subjects from validation datasets
 ## Need to load hvr_validation environment
 
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 
 for dataset in jens_adni jens_icbm
 do

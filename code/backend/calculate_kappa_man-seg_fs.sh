@@ -10,7 +10,7 @@ trap "rm -rf $TMPDIR" 0 1 2 15
 set -ux
 
 # Directories
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 MANUAL_LABS=${HERE}/data/labels_dorothee/labels_reduced_ilvc
 FS_LABS=${HERE}/data/orig_segmentations/fs_aseg
 KAPPAS=${HERE}/data/derivatives/man-seg_kappa_hcilvc_fs.csv

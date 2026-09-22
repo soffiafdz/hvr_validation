@@ -3,7 +3,7 @@
 ## RUN SNIPE using MCCV64 with Dorothee's original labels
 
 # Directories
-HERE=/path/to/user/project/snipe_hvr
+HERE="${SNIPE_HVR_DIR:?path of the NLPB (snipe) working directory}"
 SCRATCH=${HERE}/proc_4
 
 for img in ${HERE}/original_labels/t1w/*

@@ -3,7 +3,7 @@
 ## Shell script to generate a single LaTeX file compiling all figures
 
 ## CONSTANTS
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 FIGSDIR=${HERE}/plots
 METADATA=${FIGSDIR}/metadata.json
 OUTPUT=${FIGSDIR}/figures.tex

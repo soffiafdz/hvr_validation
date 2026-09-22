@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 
+use FindBin;
 use strict;
 use warnings "all";
 use Getopt::Tabular;
@@ -100,7 +101,7 @@ my $labelvol = $tmpdir . "/coloured_labels.mnc";
 my $result   = $tmpdir . "/result.mnc";
 
 &do_cmd('minclookup','-clobber','-grey','-range',20,90,$normmri, $grey);
-&do_cmd('minclookup','-clobber','-discrete','-lookup_table','/home/somebody./lib/luts/labels.map', $tmplab, $labelvol);
+&do_cmd('minclookup','-clobber','-discrete','-lookup_table',"$FindBin::Bin/../../container/lib/labels.map", $tmplab, $labelvol);
 &do_cmd('mincmath',  '-clobber','-nocheck_dimensions','-max', $grey, $labelvol, $result);
 
 

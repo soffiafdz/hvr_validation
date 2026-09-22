@@ -76,7 +76,7 @@ export -f compare
 export -f label_comparison
 
 # CONSTANTS
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 MAN_DIR=${HERE}/data/labels_dorothee/labels_reduced
 MALF_DIR=${HERE}/data/orig_segmentations/malf/reduced
 NLPB_DIR=${HERE}/data/orig_segmentations/nlpb/reduced

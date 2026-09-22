@@ -24,3 +24,15 @@ export/
 .Renviron
 .lintr
 .nvimcomlib
+
+# per-participant ADNI data: never tracked (see README, Data availability)
+data/derivatives/
+data/*.csv
+lists/*.csv
+lists/*.lst
+data/rds/*volumes*
+data/rds/*icv-adjusted*
+data/rds/ptid_*
+# editor / office lock files, LaTeX logs
+.~lock.*#
+*.log

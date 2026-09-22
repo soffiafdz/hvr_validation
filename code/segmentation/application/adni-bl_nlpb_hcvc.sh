@@ -3,7 +3,7 @@
 ## Run SNIPE ADNI subjects from list
 
 # Directories
-BASE_DIR=/path/to/user/project/hvr_validation
+BASE_DIR="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 LIB_DIR=${BASE_DIR}/libraries/snipe_adni
 TMP_DIR=${BASE_DIR}/tmp/nlpb_hcvc
 QC_DIR=${BASE_DIR}/plots/qc_adni-bl/nlpb/all

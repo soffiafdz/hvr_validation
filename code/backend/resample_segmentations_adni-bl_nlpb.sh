@@ -2,7 +2,7 @@
 
 set -xu
 
-HERE=/path/to/user/project/hvr_validation
+HERE="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 OUTDIRS=${HERE}/tmp/nlpb_hcvc
 
 for dir in $OUTDIRS/*

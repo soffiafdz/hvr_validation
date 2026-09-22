@@ -905,7 +905,7 @@ The comparisons between segmentation methods in terms of volumetric correlation 
 # Load pre-computed effect sizes (Glass' delta with bootstrap CI)
 hc_effect_file <- here("data/rds/adni-bl_effect-sizes_hc_dx.rds")
 if (!file.exists(hc_effect_file)) {
-  hc_effect_file <- "/path/to/user/project/hvr_validation/data/rds/adni-bl_effect-sizes_hc_dx.rds"
+  hc_effect_file <- here::here("data/rds/adni-bl_effect-sizes_hc_dx.rds")
 }
 hc_labels_dt <- as.data.table(readRDS(hc_effect_file))
 
@@ -982,7 +982,7 @@ Using the values for HCvol and CSFvol, we calculated the HVR for all segmentatio
 # Load pre-computed effect sizes for HVR (Glass' delta with bootstrap CI)
 hvr_effect_file <- here("data/rds/adni-bl_effect-sizes_hvr_dx.rds")
 if (!file.exists(hvr_effect_file)) {
-  hvr_effect_file <- "/path/to/user/project/hvr_validation/data/rds/adni-bl_effect-sizes_hvr_dx.rds"
+  hvr_effect_file <- here::here("data/rds/adni-bl_effect-sizes_hvr_dx.rds")
 }
 hvr_labels_dt <- as.data.table(readRDS(hvr_effect_file))
 

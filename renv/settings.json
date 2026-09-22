@@ -1,8 +1,6 @@
 {
   "bioconductor.version": [],
-  "external.libraries": [
-    "/path/to/mamba/prefix../mamba/envs/hvr_valid2/lib/R/library"
-  ],
+  "external.libraries": [],
   "ignored.packages": [],
   "package.dependency.fields": [
     "Imports",

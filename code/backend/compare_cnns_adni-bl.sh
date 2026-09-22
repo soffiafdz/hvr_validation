@@ -12,7 +12,7 @@ set -ux
 printf "id,xcorr,lhc,lcsf,rhc,rcsf\n" > $OUT_FILE
 
 compare_cnns() {
-	local BASE_DIR=/path/to/user/project/hvr_validation
+	local BASE_DIR="${HVR_VALIDATION_DIR:-$(git -C "$(dirname "$0")" rev-parse --show-toplevel)}"
 	local OUT_FILE=${BASE_DIR}/data/derivatives/adni-bl_dice_cnn_simple_simplified.csv
 	local SIMPLE=${BASE_DIR}/data/derivatives/adni-bl_cnn_hcvc
 	local SIMPLIFIED=${BASE_DIR}/data/derivatives/adni-bl_cnn_hcvc_simplified
